@@ -1,0 +1,160 @@
+# ====== 订阅链接 ======
+sub_edge: &edge_sub "C%E4%BA%AC"
+sub_chrome: &chrome_sub "%89%E7%9F%B6-CN2"
+sub_firefox: &firefox_sub "E7%9F%B6"
+sub_brave: &brave_sub "87%A4%E5%87%B0%E5%9F%8E-1"
+
+# ====== 基础网络配置 ======
+port: 7890
+socks-port: 7891
+mixed-port: 7892
+redir-port: 7893
+tproxy-port: 7894
+allow-lan: false
+bind-address: "127.0.0.1"
+mode: rule
+log-level: warning
+ipv6: true
+udp: true
+tcp-concurrent: true
+find-process-mode: strict
+global-client-fingerprint: chrome
+unified-delay: true
+
+# Smart核心训练功能
+smart:
+  enable: true
+  interval: 1800
+  tolerance: 50
+  strategy: latency
+  only-effect-groups:
+    - "Edge智能"
+    - "Chrome智能"
+    - "Firefox智能"
+    - "Brave智能"
+
+# ====== 外部控制 ======
+external-controller: 127.0.0.1:9090
+secret: "S3cureP@ssw0rd"
+external-ui: ui
+# external-ui-url: ""   # 移除远程下载，UI 请本地放置
+
+# ====== DNS ======
+dns:
+  enable: true
+  listen: 0.0.0.0:1053
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  use-system-hosts: true
+  default-nameserver:
+    - 1.1.1.1
+    - 9.9.9.9
+  nameserver:
+    - "https://cloudflare-dns.com/dns-query"
+    - "https://dns.google/dns-query"
+  proxy-server-nameserver:
+    - "https://1.1.1.1/dns-query"
+    - "https://8.8.8.8/dns-query"
+  nameserver-policy:
+    "geosite:cn":
+      - "https://doh.pub/dns-query"
+      - "https://dns.alidns.com/dns-query"
+    "geosite:geolocation-!cn":
+      - "https://dns.cloudflare.com/dns-query"
+      - "https://dns.google/dns-query"
+
+# ====== 订阅提供者 ======
+proxy-providers:
+  Edge:
+    type: http
+    url: *edge_sub
+    interval: 1800
+    path: ./providers/edge.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+  Chrome:
+    type: http
+    url: *chrome_sub
+    interval: 1800
+    path: ./providers/chrome.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+  Firefox:
+    type: http
+    url: *firefox_sub
+    interval: 1800
+    path: ./providers/firefox.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+  Brave:
+    type: http
+    url: *brave_sub
+    interval: 1800
+    path: ./providers/brave.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+
+# ====== 代理组 ======
+proxy-groups:
+  - name: "Edge智能"
+    type: url-test
+    use: [Edge]
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+    strategy: smart
+  - name: "Chrome智能"
+    type: url-test
+    use: [Chrome]
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+    strategy: smart
+  - name: "Firefox智能"
+    type: url-test
+    use: [Firefox]
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+    strategy: smart
+  - name: "Brave智能"
+    type: url-test
+    use: [Brave]
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+    strategy: smart
+  - name: "Edge手动"
+    type: select
+    use: [Edge]
+  - name: "Chrome手动"
+    type: select
+    use: [Chrome]
+  - name: "Firefox手动"
+    type: select
+    use: [Firefox]
+  - name: "Brave手动"
+    type: select
+    use: [Brave]
+
+# ====== 规则 ======
+rules:
+  - PROCESS-NAME,msedge.exe,Edge智能
+  - PROCESS-NAME,chrome.exe,Chrome智能
+  - PROCESS-NAME,firefox.exe,Firefox智能
+  - PROCESS-NAME,brave.exe,Brave智能
+  - GEOSITE,geolocation-!cn,Chrome智能
+  - GEOIP,CN,DIRECT
+  - MATCH,Chrome智能
