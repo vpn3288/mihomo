@@ -21,42 +21,56 @@ find-process-mode: strict
 global-client-fingerprint: chrome
 unified-delay: true
 
-# Smart核心训练功能
+# ====== Smart核心功能 ======
 smart:
   enable: true
-  interval: 1800
-  tolerance: 50
-  strategy: latency
-  only-effect-groups:
-    - "Edge智能"
-    - "Chrome智能"
-    - "Firefox智能"
-    - "Brave智能"
+  interval: 1800          # Smart训练间隔(秒)，30分钟
+  tolerance: 20           # 同IP多协议，延迟差异小，降低容忍度
+  strategy: consistency   # 策略: latency(最低延迟) | consistency(一致性) | smart(智能)
+  only-effect-groups:     # 只对指定代理组生效
+    - "🔍 Edge智能"
+    - "🟢 Chrome智能" 
+    - "🦊 Firefox智能"
+    - "🦁 Brave智能"
+    - "♻️ 协议智选"
+  bypass-failed-nodes: true    # 绕过失效节点
+  max-failed-times: 2         # 同IP节点，降低失败容忍次数
+  auto-detect-interface: true  # 自动检测网络接口
 
 # ====== 外部控制 ======
 external-controller: 127.0.0.1:9090
 secret: "S3cureP@ssw0rd"
 external-ui: ui
-# external-ui-url: ""   # 移除远程下载，UI 请本地放置
 
-# ====== DNS ======
+# ====== DNS配置 ======
 dns:
   enable: true
   listen: 0.0.0.0:1053
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - '*.lan'
+    - '*.local'
+    - localhost.ptlogin2.qq.com
+    - '+.srv.nintendo.net'
+    - '+.stun.playstation.net'
+    - '+.msftconnecttest.com'
+    - '+.msftncsi.com'
+    - '+.xboxlive.com'
   use-system-hosts: true
   default-nameserver:
     - 1.1.1.1
-    - 9.9.9.9
+    - 8.8.8.8
+    - 223.5.5.5
   nameserver:
     - "https://cloudflare-dns.com/dns-query"
     - "https://dns.google/dns-query"
+    - "https://doh.pub/dns-query"
   proxy-server-nameserver:
     - "https://1.1.1.1/dns-query"
     - "https://8.8.8.8/dns-query"
   nameserver-policy:
-    "geosite:cn":
+    "geosite:cn,private":
       - "https://doh.pub/dns-query"
       - "https://dns.alidns.com/dns-query"
     "geosite:geolocation-!cn":
@@ -68,93 +82,290 @@ proxy-providers:
   Edge:
     type: http
     url: *edge_sub
-    interval: 1800
+    interval: 3600
     path: ./providers/edge.yaml
     health-check:
       enable: true
       url: https://www.gstatic.com/generate_204
       interval: 300
+      timeout: 3000
+      
   Chrome:
     type: http
     url: *chrome_sub
-    interval: 1800
+    interval: 3600
     path: ./providers/chrome.yaml
     health-check:
       enable: true
       url: https://www.gstatic.com/generate_204
       interval: 300
+      timeout: 3000
+      
   Firefox:
     type: http
     url: *firefox_sub
-    interval: 1800
+    interval: 3600
     path: ./providers/firefox.yaml
     health-check:
       enable: true
       url: https://www.gstatic.com/generate_204
       interval: 300
+      timeout: 3000
+      
   Brave:
     type: http
     url: *brave_sub
-    interval: 1800
+    interval: 3600
     path: ./providers/brave.yaml
     health-check:
       enable: true
       url: https://www.gstatic.com/generate_204
       interval: 300
+      timeout: 3000
 
-# ====== 代理组 ======
+# ====== 代理组配置 ======
 proxy-groups:
-  - name: "Edge智能"
-    type: url-test
-    use: [Edge]
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-    lazy: true
-    strategy: smart
-  - name: "Chrome智能"
-    type: url-test
-    use: [Chrome]
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-    lazy: true
-    strategy: smart
-  - name: "Firefox智能"
-    type: url-test
-    use: [Firefox]
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-    lazy: true
-    strategy: smart
-  - name: "Brave智能"
-    type: url-test
-    use: [Brave]
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-    lazy: true
-    strategy: smart
-  - name: "Edge手动"
+  # 主选择组 - 针对同IP多协议优化
+  - name: "🌐 代理选择"
     type: select
-    use: [Edge]
-  - name: "Chrome手动"
-    type: select
-    use: [Chrome]
-  - name: "Firefox手动"
-    type: select
-    use: [Firefox]
-  - name: "Brave手动"
-    type: select
-    use: [Brave]
+    proxies:
+      - "♻️ 协议智选"      # Smart选择最优协议
+      - "🛡️ 协议容灾"      # 容灾备用
+      - "🔄 协议轮换"      # 轮换使用协议
+      - "🔍 Edge代理"      # VMess协议
+      - "🟢 Chrome代理"    # 其他协议...
+      - "🦊 Firefox代理"
+      - "🦁 Brave代理"
+      - "🚫 直连"
 
-# ====== 规则 ======
+  # Edge浏览器代理组 - Smart智能 + 直接手动选择
+  - name: "🔍 Edge代理"
+    type: select
+    proxies:
+      - "🔍 Edge智能"      # Smart自动选择
+    use: [Edge]            # 同时包含所有Edge节点供手动选择
+    
+  - name: "🔍 Edge智能"
+    type: url-test
+    use: [Edge]
+    url: https://www.gstatic.com/generate_204
+    interval: 180
+    timeout: 2000
+    tolerance: 20
+    lazy: true
+    strategy: smart
+    max-failed-times: 2
+    expected-status: "200"
+    
+  # Chrome浏览器代理组 - Smart智能 + 直接手动选择
+  - name: "🟢 Chrome代理"
+    type: select
+    proxies:
+      - "🟢 Chrome智能"     # Smart自动选择
+    use: [Chrome]           # 同时包含所有Chrome节点供手动选择
+    
+  - name: "🟢 Chrome智能"
+    type: url-test
+    use: [Chrome]
+    url: https://www.gstatic.com/generate_204
+    interval: 180
+    timeout: 2000
+    tolerance: 20
+    lazy: true
+    strategy: smart
+    max-failed-times: 2
+    expected-status: "200"
+    
+  # Firefox浏览器代理组 - Smart智能 + 直接手动选择
+  - name: "🦊 Firefox代理"
+    type: select
+    proxies:
+      - "🦊 Firefox智能"    # Smart自动选择
+    use: [Firefox]          # 同时包含所有Firefox节点供手动选择
+    
+  - name: "🦊 Firefox智能"
+    type: url-test
+    use: [Firefox]
+    url: https://www.gstatic.com/generate_204
+    interval: 180
+    timeout: 2000
+    tolerance: 20
+    lazy: true
+    strategy: smart
+    max-failed-times: 2
+    expected-status: "200"
+    
+  # Brave浏览器代理组 - Smart智能 + 直接手动选择
+  - name: "🦁 Brave代理"
+    type: select
+    proxies:
+      - "🦁 Brave智能"      # Smart自动选择
+    use: [Brave]            # 同时包含所有Brave节点供手动选择
+    
+  - name: "🦁 Brave智能"
+    type: url-test
+    use: [Brave]
+    url: https://www.gstatic.com/generate_204
+    interval: 180
+    timeout: 2000
+    tolerance: 20
+    lazy: true
+    strategy: smart
+    max-failed-times: 2
+    expected-status: "200"
+
+  # 手动选择组 - 已整合到各浏览器代理组中，删除冗余组
+
+  # 自动选择组 - 同IP多协议Smart智能选择最优协议
+  - name: "♻️ 协议智选"
+    type: url-test
+    use: [Edge, Chrome, Firefox, Brave]
+    url: https://www.gstatic.com/generate_204
+    interval: 180           # 同IP节点，提高检测频率
+    timeout: 2000          # 降低超时时间
+    tolerance: 20          # 同IP延迟差异小
+    lazy: true
+    strategy: smart        # Smart会选择最稳定的协议
+    max-failed-times: 2
+    expected-status: "200"
+
+  # 协议容灾组 - fallback确保至少有一个协议可用
+  - name: "🛡️ 协议容灾"
+    type: fallback
+    use: [Edge, Chrome, Firefox, Brave]
+    url: https://www.gstatic.com/generate_204
+    interval: 120          # 更频繁的健康检查
+    timeout: 2000
+    lazy: true
+
+  # 取消传统负载均衡（同IP无意义）
+  # 改为协议轮换 - 防止单一协议过载
+  - name: "🔄 协议轮换"
+    type: load-balance
+    use: [Edge, Chrome, Firefox, Brave]
+    url: https://www.gstatic.com/generate_204
+    interval: 180
+    timeout: 2000
+    strategy: round-robin   # 轮换使用不同协议
+    lazy: true
+
+  # 特殊用途代理组
+  - name: "📺 流媒体"
+    type: select
+    proxies:
+      - "♻️ 协议智选"      # Smart选择最佳协议
+      - "🟢 Chrome智能"    # 手动指定协议
+      - "🔍 Edge智能"
+      - "🦊 Firefox智能"
+      - "🦁 Brave智能"
+      - "🛡️ 协议容灾"
+
+  - name: "📱 电报"
+    type: select
+    proxies:
+      - "♻️ 协议智选"
+      - "🔄 协议轮换"      # 电报可以轮换协议
+      - "🟢 Chrome智能"
+      - "🔍 Edge智能"
+      - "🦊 Firefox智能" 
+      - "🦁 Brave智能"
+
+  - name: "🎮 游戏"
+    type: select
+    proxies:
+      - "🚫 直连"
+      - "♻️ 协议智选"      # 游戏选择最稳定协议
+      - "🛡️ 协议容灾"
+      - "🟢 Chrome智能"
+
+  - name: "🍎 苹果服务"
+    type: select
+    proxies:
+      - "🚫 直连"
+      - "♻️ 协议智选"
+      - "🟢 Chrome智能"
+
+  - name: "📢 广告拦截"
+    type: select
+    proxies:
+      - "🛡️ 拦截"
+      - "🚫 直连"
+
+  - name: "🚫 直连"
+    type: select
+    proxies:
+      - DIRECT
+
+  - name: "🛡️ 拦截"
+    type: select
+    proxies:
+      - REJECT
+
+# ====== 规则配置 ======
 rules:
-  - PROCESS-NAME,msedge.exe,Edge智能
-  - PROCESS-NAME,chrome.exe,Chrome智能
-  - PROCESS-NAME,firefox.exe,Firefox智能
-  - PROCESS-NAME,brave.exe,Brave智能
-  - GEOSITE,geolocation-!cn,Chrome智能
-  - GEOIP,CN,DIRECT
-  - MATCH,Chrome智能
+  # 应用程序分流规则（Windows）
+  - PROCESS-NAME,msedge.exe,🔍 Edge代理
+  - PROCESS-NAME,chrome.exe,🟢 Chrome代理
+  - PROCESS-NAME,firefox.exe,🦊 Firefox代理
+  - PROCESS-NAME,brave.exe,🦁 Brave代理
+  
+  # Android应用分流（需要开启增强模式）
+  - PROCESS-NAME,com.android.chrome,🟢 Chrome代理
+  - PROCESS-NAME,com.microsoft.emmx,🔍 Edge代理
+  - PROCESS-NAME,org.mozilla.firefox,🦊 Firefox代理
+  - PROCESS-NAME,com.brave.browser,🦁 Brave代理
+  
+  # 广告拦截
+  - GEOSITE,category-ads-all,📢 广告拦截
+  
+  # 流媒体服务
+  - GEOSITE,youtube,📺 流媒体
+  - GEOSITE,netflix,📺 流媒体
+  - GEOSITE,disney,📺 流媒体
+  - GEOSITE,hbo,📺 流媒体
+  - GEOSITE,primevideo,📺 流媒体
+  
+  # 社交媒体
+  - GEOSITE,telegram,📱 电报
+  - GEOSITE,twitter,🌐 代理选择
+  - GEOSITE,facebook,🌐 代理选择
+  - GEOSITE,instagram,🌐 代理选择
+  
+  # 游戏相关（使用域名规则代替，因为GEOSITE无专门游戏规则）
+  - DOMAIN-SUFFIX,steampowered.com,🎮 游戏
+  - DOMAIN-SUFFIX,steamcommunity.com,🎮 游戏
+  - DOMAIN-SUFFIX,steamstatic.com,🎮 游戏
+  - DOMAIN-SUFFIX,epicgames.com,🎮 游戏
+  - DOMAIN-SUFFIX,unrealengine.com,🎮 游戏
+  - DOMAIN-SUFFIX,nintendo.com,🎮 游戏
+  - DOMAIN-SUFFIX,nintendo.net,🎮 游戏
+  - DOMAIN-SUFFIX,origin.com,🎮 游戏
+  - DOMAIN-SUFFIX,ea.com,🎮 游戏
+  - DOMAIN-SUFFIX,ubisoft.com,🎮 游戏
+  - DOMAIN-SUFFIX,battle.net,🎮 游戏
+  - DOMAIN-SUFFIX,blizzard.com,🎮 游戏
+  
+  # 苹果服务
+  - GEOSITE,apple,🍎 苹果服务
+  - GEOSITE,icloud,🍎 苹果服务
+  
+  # 谷歌服务
+  - GEOSITE,google,🟢 Chrome代理
+  - GEOSITE,youtube,📺 流媒体
+  
+  # Microsoft服务
+  - GEOSITE,microsoft,🔍 Edge代理
+  
+  # 国外网站
+  - GEOSITE,geolocation-!cn,🌐 代理选择
+  
+  # 国内网站直连
+  - GEOSITE,cn,🚫 直连
+  - GEOSITE,private,🚫 直连
+  
+  # 国内IP直连
+  - GEOIP,CN,🚫 直连
+  - GEOIP,private,🚫 直连
+  
+  # 最终规则
+  - MATCH,🌐 代理选择
