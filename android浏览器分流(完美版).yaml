@@ -1,0 +1,640 @@
+# Android浏览器分流（完美版）v1.0
+# ClashMeta for Android / Mihomo
+#
+# 浏览器包名对照：
+#   Edge    → com.microsoft.emmx
+#   Chrome  → com.android.chrome
+#   Brave   → com.brave.browser
+#   Firefox → org.mozilla.firefox
+#   Cromite → org.cromite.cromite
+#   Vivaldi → com.vivaldi.browser
+#
+# 规则分流逻辑：
+#   §0   DoT/DoQ 853 端口 → 拦截（防 Android 私人 DNS 绕过劫持）
+#   §1   所有浏览器 WebRTC/STUN/TURN UDP 全端口段 → 静默丢弃
+#   §2   私有 / 内网 / CGNAT IP → 直连
+#   §3   Android 系统网络检测 / NTP 时间同步 → 直连
+#   §4   Edge：CN 域名/IP → 直连
+#   §4b  其他浏览器：CN 域名/IP → 拦截（坚决不泄露真实 IP）
+#   §5   Edge：Microsoft 服务 → 直连（防异地登录告警）
+#   §6   Edge：国内支付/电商 → 直连
+#   §7   各浏览器进程 → 对应 VPS 代理组
+#   §8   全局非浏览器 Microsoft 域名 → 直连
+#   §9   广告 → 拦截
+#   §10  GEOSITE/GEOIP CN → 直连（非浏览器进程）
+#   §11  GEOSITE geolocation-!cn → 通用代理
+#   §12  兜底 → 通用代理
+
+# ── 全局基础 ──────────────────────────────────────────────────
+ipv6: false
+allow-lan: false
+unified-delay: true
+tcp-concurrent: true
+keep-alive-interval: 15
+keep-alive-idle: 300
+find-process-mode: strict
+log-level: warning
+mode: rule
+
+# ── GeoData ───────────────────────────────────────────────────
+geodata-mode: true
+geodata-loader: standard
+geo-auto-update: true
+geo-update-interval: 24
+geox-url:
+  geoip:   "https://ghproxy.net/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat"
+  geosite: "https://ghproxy.net/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+  mmdb:    "https://ghproxy.net/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country-lite.mmdb"
+
+# ── 状态持久化 ────────────────────────────────────────────────
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+# ── 域名嗅探 ──────────────────────────────────────────────────
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+      override-destination: true
+    QUIC:
+      ports: [443, 8443]
+      override-destination: false
+  skip-domain:
+    - "+.push.apple.com"
+    - "+.local"
+    - "+.lan"
+    - "localhost"
+
+# ── DNS ───────────────────────────────────────────────────────
+dns:
+  enable: true
+  cache-algorithm: arc
+  ipv6: false
+  listen: 127.0.0.1:1053
+  use-hosts: true
+  use-system-hosts: false
+  respect-rules: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter-mode: blacklist
+
+  fake-ip-filter:
+    # ── 本地回环 / 内网 ──────────────────────────────────────
+    - "+.lan"
+    - "+.local"
+    - "localhost"
+    - "+.localhost"
+    - "+.home.arpa"
+
+    # ── NTP 时间同步 ─────────────────────────────────────────
+    - "time.android.com"
+    - "time.google.com"
+    - "time1.google.com"
+    - "time2.google.com"
+    - "time3.google.com"
+    - "time4.google.com"
+    - "+.ntp.org"
+    - "ntp.aliyun.com"
+    - "ntp1.aliyun.com"
+    - "ntp2.aliyun.com"
+    - "ntp.tencent.com"
+
+    # ── Android 网络连通性检测 ───────────────────────────────
+    - "connectivitycheck.gstatic.com"
+    - "connectivitycheck.android.com"
+    - "+.android.com"
+    - "clients3.google.com"
+    - "captive.apple.com"
+
+    # ── Android/WebView 内核 NCSI 检测 ──────────────────────
+    - "www.msftconnecttest.com"
+    - "www.msftncsi.com"
+    - "ipv6.msftconnecttest.com"
+
+    # ── STUN / TURN / WebRTC（获真实 IP 后由 §1 规则丢弃）──
+    - "+.stun.l.google.com"
+    - "stun.google.com"
+    - "+.stun.services.mozilla.com"
+    - "stun.cloudflare.com"
+    - "+.turn.twilio.com"
+    - "+.global.turn.twilio.com"
+    - "stun.stunprotocol.org"
+    - "+.xirsys.com"
+    - "+.relay.metered.ca"
+    - "+.webrtc.org"
+    - "stun.nextcloud.com"
+    - "stun.sipgate.net"
+    - "stun.counterpath.com"
+    - "stun.schlund.de"
+    - "stun.ekiga.net"
+    - "stun.ideasip.com"
+    - "stun.zoho.com"
+    - "stun.1und1.de"
+
+    # ── Microsoft 服务（Edge 认证需真实 IP，防异地告警）────
+    - "+.office365.com"
+    - "+.teams.microsoft.com"
+    - "+.cloud.microsoft"
+    - "+.sharepoint.com"
+    - "+.skype.com"
+    - "+.onedrive.com"
+    - "+.lync.com"
+    - "+.microsoft.com"
+    - "+.microsoftonline.com"
+    - "+.live.com"
+    - "+.office.com"
+    - "+.windows.com"
+    - "+.azure.com"
+    - "+.bing.com"
+    - "+.msn.com"
+
+  proxy-server-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+    - "https://dns.alidns.com/dns-query"
+    - "https://doh.pub/dns-query"
+
+  direct-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  direct-nameserver-follow-policy: true
+
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+  nameserver:
+    - "https://dns.cloudflare.com/dns-query#🌐 通用代理"
+    - "https://dns.google/dns-query#🌐 通用代理"
+    - "https://doh.opendns.com/dns-query#🌐 通用代理"
+
+  nameserver-policy:
+    "geosite:cn,private,apple,microsoft":
+      - 223.5.5.5
+      - 119.29.29.29
+      - "https://dns.alidns.com/dns-query"
+    "geosite:geolocation-!cn":
+      - "https://dns.cloudflare.com/dns-query#🌐 通用代理"
+      - "https://dns.google/dns-query#🌐 通用代理"
+
+  fallback:
+    - "tls://1.1.1.1#🌐 通用代理"
+    - "tls://8.8.8.8#🌐 通用代理"
+
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    geosite:
+      - gfw
+    ipcidr:
+      - 240.0.0.0/4
+      - 0.0.0.0/32
+  disable-cache: false
+
+# ── TUN 虚拟网卡 ──────────────────────────────────────────────
+tun:
+  enable: true
+  stack: mixed
+  device: Meta
+  auto-route: true
+  auto-redirect: false
+  auto-detect-interface: true
+  dns-hijack:
+    - "any:53"
+    - "tcp://any:53"
+  endpoint-independent-nat: false
+  strict-route: true
+  mtu: 9000
+  udp-timeout: 300
+
+proxy-providers:
+
+  Edge-VPS1-Nodes:
+    type: http
+    url: "https://YOUR_EDGE_SUB_URL_HERE"
+    path: ./providers/edge_vps1.yaml
+    interval: 86400
+    skip-cert-verify: false
+    override:
+      client-fingerprint: chrome
+    health-check:
+      enable: true
+      url: "https://www.gstatic.com/generate_204"
+      interval: 300
+      timeout: 5000
+      lazy: true
+
+  Chrome-VPS2-Nodes:
+    type: http
+    url: "https://YOUR_CHROME_SUB_URL_HERE"
+    path: ./providers/chrome_vps2.yaml
+    interval: 86400
+    skip-cert-verify: false
+    override:
+      client-fingerprint: chrome
+    health-check:
+      enable: true
+      url: "https://www.gstatic.com/generate_204"
+      interval: 300
+      timeout: 5000
+      lazy: true
+
+  Firefox-VPS3-Nodes:
+    type: http
+    url: "https://YOUR_FIREFOX_SUB_URL_HERE"
+    path: ./providers/firefox_vps3.yaml
+    interval: 86400
+    skip-cert-verify: false
+    override:
+      client-fingerprint: firefox
+    health-check:
+      enable: true
+      url: "https://www.gstatic.com/generate_204"
+      interval: 300
+      timeout: 5000
+      lazy: true
+
+  Brave-VPS4-Nodes:
+    type: http
+    url: "https://YOUR_BRAVE_SUB_URL_HERE"
+    path: ./providers/brave_vps4.yaml
+    interval: 86400
+    skip-cert-verify: false
+    override:
+      client-fingerprint: chrome
+    health-check:
+      enable: true
+      url: "https://www.gstatic.com/generate_204"
+      interval: 300
+      timeout: 5000
+      lazy: true
+
+  Cromite-VPS5-Nodes:
+    type: http
+    url: "https://YOUR_CROMITE_SUB_URL_HERE"
+    path: ./providers/cromite_vps5.yaml
+    interval: 86400
+    skip-cert-verify: false
+    override:
+      client-fingerprint: chrome
+    health-check:
+      enable: true
+      url: "https://www.gstatic.com/generate_204"
+      interval: 300
+      timeout: 5000
+      lazy: true
+
+  Vivaldi-VPS6-Nodes:
+    type: http
+    url: "https://YOUR_VIVALDI_SUB_URL_HERE"
+    path: ./providers/vivaldi_vps6.yaml
+    interval: 86400
+    skip-cert-verify: false
+    override:
+      client-fingerprint: chrome
+    health-check:
+      enable: true
+      url: "https://www.gstatic.com/generate_204"
+      interval: 300
+      timeout: 5000
+      lazy: true
+
+proxy-groups:
+
+  - name: "🔍 Edge代理"
+    type: select
+    use:
+      - Edge-VPS1-Nodes
+    proxies:
+      - "🔍 Edge自动"
+      - "🔍 Edge故障切换"
+
+  - name: "🔍 Edge自动"
+    type: url-test
+    use:
+      - Edge-VPS1-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    timeout: 5000
+    tolerance: 50
+    lazy: true
+
+  - name: "🔍 Edge故障切换"
+    type: fallback
+    use:
+      - Edge-VPS1-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 60
+    timeout: 5000
+
+  - name: "🟢 Chrome代理"
+    type: select
+    use:
+      - Chrome-VPS2-Nodes
+    proxies:
+      - "🟢 Chrome自动"
+      - "🟢 Chrome故障切换"
+
+  - name: "🟢 Chrome自动"
+    type: url-test
+    use:
+      - Chrome-VPS2-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    timeout: 5000
+    tolerance: 50
+    lazy: true
+
+  - name: "🟢 Chrome故障切换"
+    type: fallback
+    use:
+      - Chrome-VPS2-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 60
+    timeout: 5000
+
+  - name: "🦊 Firefox代理"
+    type: select
+    use:
+      - Firefox-VPS3-Nodes
+    proxies:
+      - "🦊 Firefox自动"
+      - "🦊 Firefox故障切换"
+
+  - name: "🦊 Firefox自动"
+    type: url-test
+    use:
+      - Firefox-VPS3-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    timeout: 5000
+    tolerance: 50
+    lazy: true
+
+  - name: "🦊 Firefox故障切换"
+    type: fallback
+    use:
+      - Firefox-VPS3-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 60
+    timeout: 5000
+
+  - name: "🦁 Brave代理"
+    type: select
+    use:
+      - Brave-VPS4-Nodes
+    proxies:
+      - "🦁 Brave自动"
+      - "🦁 Brave故障切换"
+
+  - name: "🦁 Brave自动"
+    type: url-test
+    use:
+      - Brave-VPS4-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    timeout: 5000
+    tolerance: 50
+    lazy: true
+
+  - name: "🦁 Brave故障切换"
+    type: fallback
+    use:
+      - Brave-VPS4-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 60
+    timeout: 5000
+
+  - name: "🔵 Cromite代理"
+    type: select
+    use:
+      - Cromite-VPS5-Nodes
+    proxies:
+      - "🔵 Cromite自动"
+      - "🔵 Cromite故障切换"
+
+  - name: "🔵 Cromite自动"
+    type: url-test
+    use:
+      - Cromite-VPS5-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    timeout: 5000
+    tolerance: 50
+    lazy: true
+
+  - name: "🔵 Cromite故障切换"
+    type: fallback
+    use:
+      - Cromite-VPS5-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 60
+    timeout: 5000
+
+  - name: "🟡 Vivaldi代理"
+    type: select
+    use:
+      - Vivaldi-VPS6-Nodes
+    proxies:
+      - "🟡 Vivaldi自动"
+      - "🟡 Vivaldi故障切换"
+
+  - name: "🟡 Vivaldi自动"
+    type: url-test
+    use:
+      - Vivaldi-VPS6-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    timeout: 5000
+    tolerance: 50
+    lazy: true
+
+  - name: "🟡 Vivaldi故障切换"
+    type: fallback
+    use:
+      - Vivaldi-VPS6-Nodes
+    url: "https://www.gstatic.com/generate_204"
+    interval: 60
+    timeout: 5000
+
+  - name: "🌐 通用代理"
+    type: select
+    proxies:
+      - "🔍 Edge代理"
+      - "🟢 Chrome代理"
+      - "🦊 Firefox代理"
+      - "🦁 Brave代理"
+      - "🔵 Cromite代理"
+      - "🟡 Vivaldi代理"
+      - "🚫 直连"
+
+  - name: "🚫 直连"
+    type: select
+    proxies:
+      - DIRECT
+
+  - name: "🛑 拦截"
+    # ⚠️ 保持 REJECT，切勿改为 DIRECT，否则非 Edge 浏览器 CN 流量将暴露真实 IP！
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+
+  - name: "🚫 UDP静默丢弃"
+    type: select
+    proxies:
+      - REJECT-DROP
+      - REJECT
+
+rules:
+
+  # §0  DoT/DoQ 853 端口 → 拦截（防 Android 私人 DNS 绕过劫持）
+  - AND,((NETWORK,TCP),(DST-PORT,853)),🛑 拦截
+  - AND,((NETWORK,UDP),(DST-PORT,853)),🛑 拦截
+
+  # §1  所有浏览器 WebRTC/STUN/TURN UDP → 静默丢弃（防真实 IP 泄露）
+  # 端口：3478-3481（STUN/TURN）· 5349-5350（DTLS）· 19302-19309（Google STUN）
+  # Edge
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
+  # Chrome
+  - AND,((PROCESS-NAME,com.android.chrome),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,com.android.chrome),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,com.android.chrome),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
+  # Brave
+  - AND,((PROCESS-NAME,com.brave.browser),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,com.brave.browser),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,com.brave.browser),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
+  # Firefox
+  - AND,((PROCESS-NAME,org.mozilla.firefox),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,org.mozilla.firefox),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,org.mozilla.firefox),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
+  # Cromite
+  - AND,((PROCESS-NAME,org.cromite.cromite),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,org.cromite.cromite),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,org.cromite.cromite),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
+  # Vivaldi
+  - AND,((PROCESS-NAME,com.vivaldi.browser),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,com.vivaldi.browser),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,com.vivaldi.browser),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
+
+  # §2  私有 / 内网 / CGNAT IP → 直连
+  - IP-CIDR,127.0.0.0/8,🚫 直连,no-resolve
+  - IP-CIDR,10.0.0.0/8,🚫 直连,no-resolve
+  - IP-CIDR,172.16.0.0/12,🚫 直连,no-resolve
+  - IP-CIDR,192.168.0.0/16,🚫 直连,no-resolve
+  - IP-CIDR,169.254.0.0/16,🚫 直连,no-resolve
+  - IP-CIDR,100.64.0.0/10,🚫 直连,no-resolve
+  - IP-CIDR,224.0.0.0/4,🚫 直连,no-resolve
+  - IP-CIDR,240.0.0.0/4,🚫 直连,no-resolve
+
+  # §3  Android 系统网络检测 / NTP 时间同步 → 直连
+  - DOMAIN,connectivitycheck.gstatic.com,🚫 直连
+  - DOMAIN,connectivitycheck.android.com,🚫 直连
+  - DOMAIN,clients3.google.com,🚫 直连
+  - DOMAIN,captive.apple.com,🚫 直连
+  - DOMAIN,www.msftconnecttest.com,🚫 直连
+  - DOMAIN,www.msftncsi.com,🚫 直连
+  - DOMAIN,ipv6.msftconnecttest.com,🚫 直连
+  - DOMAIN,time.android.com,🚫 直连
+  - DOMAIN,time.google.com,🚫 直连
+  - DOMAIN,time1.google.com,🚫 直连
+  - DOMAIN,time2.google.com,🚫 直连
+  - DOMAIN,time3.google.com,🚫 直连
+  - DOMAIN,time4.google.com,🚫 直连
+  - DOMAIN,ntp.aliyun.com,🚫 直连
+  - DOMAIN,ntp1.aliyun.com,🚫 直连
+  - DOMAIN,ntp2.aliyun.com,🚫 直连
+  - DOMAIN,ntp.tencent.com,🚫 直连
+  - DOMAIN-SUFFIX,ntp.org,🚫 直连
+
+  # §4  Edge：中国大陆域名/IP → 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(GEOSITE,cn)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(GEOIP,cn,no-resolve)),🚫 直连
+
+  # §4b 其他浏览器：中国大陆域名/IP → 拦截（坚决不泄露真实 IP）
+  - AND,((PROCESS-NAME,com.android.chrome),(GEOSITE,cn)),🛑 拦截
+  - AND,((PROCESS-NAME,com.android.chrome),(GEOIP,cn,no-resolve)),🛑 拦截
+  - AND,((PROCESS-NAME,com.brave.browser),(GEOSITE,cn)),🛑 拦截
+  - AND,((PROCESS-NAME,com.brave.browser),(GEOIP,cn,no-resolve)),🛑 拦截
+  - AND,((PROCESS-NAME,org.mozilla.firefox),(GEOSITE,cn)),🛑 拦截
+  - AND,((PROCESS-NAME,org.mozilla.firefox),(GEOIP,cn,no-resolve)),🛑 拦截
+  - AND,((PROCESS-NAME,org.cromite.cromite),(GEOSITE,cn)),🛑 拦截
+  - AND,((PROCESS-NAME,org.cromite.cromite),(GEOIP,cn,no-resolve)),🛑 拦截
+  - AND,((PROCESS-NAME,com.vivaldi.browser),(GEOSITE,cn)),🛑 拦截
+  - AND,((PROCESS-NAME,com.vivaldi.browser),(GEOIP,cn,no-resolve)),🛑 拦截
+
+  # §5  Edge：Microsoft 服务 → 直连（防账号异地登录告警）
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,microsoft.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,microsoftonline.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,live.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,office.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,office365.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,windows.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,azure.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,bing.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,bing.net)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,msn.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,cloud.microsoft)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,sharepoint.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,skype.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,onedrive.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,lync.com)),🚫 直连
+
+  # §6  Edge：国内支付 / 电商 → 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,alipay.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,alipayobjects.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,antgroup.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,taobao.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,tmall.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,jd.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,jdpay.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,weixin.qq.com)),🚫 直连
+  - AND,((PROCESS-NAME,com.microsoft.emmx),(DOMAIN-SUFFIX,wxpay.com)),🚫 直连
+
+  # §7  各浏览器进程 → 对应 VPS 代理组
+  - PROCESS-NAME,com.microsoft.emmx,🔍 Edge代理
+  - PROCESS-NAME,com.android.chrome,🟢 Chrome代理
+  - PROCESS-NAME,com.brave.browser,🦁 Brave代理
+  - PROCESS-NAME,org.mozilla.firefox,🦊 Firefox代理
+  - PROCESS-NAME,org.cromite.cromite,🔵 Cromite代理
+  - PROCESS-NAME,com.vivaldi.browser,🟡 Vivaldi代理
+
+  # §8  全局（非浏览器进程）Microsoft 域名 → 直连
+  - DOMAIN-SUFFIX,microsoft.com,🚫 直连
+  - DOMAIN-SUFFIX,microsoftonline.com,🚫 直连
+  - DOMAIN-SUFFIX,live.com,🚫 直连
+  - DOMAIN-SUFFIX,office.com,🚫 直连
+  - DOMAIN-SUFFIX,office365.com,🚫 直连
+  - DOMAIN-SUFFIX,windows.com,🚫 直连
+  - DOMAIN-SUFFIX,azure.com,🚫 直连
+  - DOMAIN-SUFFIX,bing.com,🚫 直连
+  - DOMAIN-SUFFIX,bing.net,🚫 直连
+  - DOMAIN-SUFFIX,msn.com,🚫 直连
+  - DOMAIN-SUFFIX,cloud.microsoft,🚫 直连
+  - DOMAIN-SUFFIX,sharepoint.com,🚫 直连
+  - DOMAIN-SUFFIX,skype.com,🚫 直连
+  - DOMAIN-SUFFIX,onedrive.com,🚫 直连
+  - DOMAIN-SUFFIX,lync.com,🚫 直连
+
+  # §9  广告拦截
+  - GEOSITE,category-ads-all,🛑 拦截
+
+  # §10  国内流量（非浏览器进程）→ 直连
+  - GEOSITE,cn,🚫 直连
+  - GEOIP,cn,🚫 直连,no-resolve
+
+  # §11  国外域名 → 通用代理
+  - GEOSITE,geolocation-!cn,🌐 通用代理
+
+  # §12  兜底
+  - MATCH,🌐 通用代理
