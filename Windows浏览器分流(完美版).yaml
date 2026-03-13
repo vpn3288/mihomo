@@ -1,62 +1,6 @@
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║  Clash Party (mihomo) 覆写配置                                   ║
-# ║  Windows 浏览器分流 · 完美版 v1.4                                 ║
-# ╠══════════════════════════════════════════════════════════════════╣
-# ║  【v1.4 变更】                                                    ║
-# ║  [v1.4-新增] §1b 非 Edge 浏览器 QUIC UDP/443 → 静默丢弃          ║
-# ║    VMess/VLESS/Trojan 均为 TCP 隧道，无法有效中继 UDP。            ║
-# ║    QUIC 包进入 §8 后握手超时 → 触发 H3→TCP 降级 →                ║
-# ║    降级抖动反而产生代理特征。丢弃后浏览器直接走 TCP/TLS，干净利落。 ║
-# ║    Edge 保留 QUIC（Edge VPS 可能支持 UDP 中继，且 Edge 行为差异大）║
-# ║  [v1.3] fallback 故障切换组全部显式设置 lazy: false               ║
-# ╠══════════════════════════════════════════════════════════════════╣
-# ║  【v1.4 AI 建议审核】                                             ║
-# ║                                                                  ║
-# ║  ❌ 驳回：DoH 地址追加 &client-fingerprint=chrome（AI建议1）      ║
-# ║    DoH nameserver 均标注了 #🌐 通用代理，DNS 查询经过加密隧道      ║
-# ║    发出，DPI 看到的是 VPS 隧道的 TLS 握手特征，而非 DoH 本身的。  ║
-# ║    DoH 的 TLS 握手完全包裹在隧道内，对外不可见，加指纹无意义。     ║
-# ║                                                                  ║
-# ║  ❌ 驳回：nameserver-policy Chrome CN 域名泄露（AI建议2）          ║
-# ║    同 v1.2/v1.3 驳回理由：fake-ip 模式下 Chrome 访问 baidu.com   ║
-# ║    → Mihomo 直接返回 198.18.x.x 假 IP，不触发任何 DNS 查询，      ║
-# ║    nameserver-policy 根本不会被调用。ISP 不可见任何 DNS 记录。     ║
-# ║                                                                  ║
-# ║  ❌ 驳回：MTU 改 1400 + auto-mss: true（AI建议3）                 ║
-# ║    同 v1.0/v1.2/v1.3 驳回：mtu:9000 针对 TUN 虚拟接口内部，      ║
-# ║    物理出口 MTU 由 OS PMTUD 自动协商，TUN 层设置对物理出口无影响。  ║
-# ║    auto-mss 不是 mihomo TUN 的有效字段，写入会被静默忽略。          ║
-# ║                                                                  ║
-# ║  ❌ 驳回：ipv6: false（AI建议4）                                  ║
-# ║    全局第一行已设置，AI 未阅读文件。                               ║
-# ║                                                                  ║
-# ║  ❌ 驳回：DST-PORT 范围拆分（AI建议5）                             ║
-# ║    mihomo 明确支持 DST-PORT 范围语法（3478-3481），                ║
-# ║    AND 规则中经充分验证，无需拆分。保留范围写法更简洁。             ║
-# ║                                                                  ║
-# ║  ❌ 驳回：udp-timeout 300→120（再次）                             ║
-# ║    300s 是官方 TUN 文档默认值，QUIC 长连接需要，保持不变。          ║
-# ╚══════════════════════════════════════════════════════════════════╝
-#
-# 规则分流逻辑：
-#   §0   DST-PORT 853 → 拦截（防 Windows DoT 绕过 dns-hijack）
-#   §1   所有浏览器 WebRTC/STUN/TURN UDP → 静默丢弃
-#   §1b  非 Edge 浏览器 QUIC UDP/443 → 静默丢弃
-#   §2   私有 / 内网 / CGNAT IP → 直连
-#   §3   Windows NCSI / NTP → 直连
-#   §4   Edge + WebView2：CN 域名/IP → 直连
-#   §4b  其他浏览器：CN 域名/IP → 拦截
-#   §5   Edge + WebView2：Microsoft 服务 → 直连
-#   §6   Edge + WebView2：国内支付/电商 → 直连
-#   §7   WebView2 兜底 → Edge 代理
-#   §8   各浏览器进程 → 对应 VPS 代理组
-#   §9   全局非浏览器 Microsoft 域名 → 直连
-#   §10  广告 → 拦截
-#   §11  GEOSITE/GEOIP CN → 直连（非浏览器进程）
-#   §12  geolocation-!cn → 通用代理
-#   §13  MATCH → 通用代理
+# Clash Party (mihomo) 覆写配置 · Windows 浏览器分流 · v2.4
+# v2.4: 清除所有历史注释 + 添加 geosite-matcher: mph（GEOSITE 查找加速）
 
-# ── 全局 ─────────────────────────────────────────────────────────
 ipv6: false
 allow-lan: false
 unified-delay: true
@@ -67,9 +11,9 @@ find-process-mode: strict
 log-level: warning
 mode: rule
 
-# ── GeoData ──────────────────────────────────────────────────────
 geodata-mode: true
 geodata-loader: standard
+geosite-matcher: mph
 geo-auto-update: true
 geo-update-interval: 24
 geox-url:
@@ -77,12 +21,10 @@ geox-url:
   geosite: "https://ghproxy.net/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
   mmdb:    "https://ghproxy.net/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country-lite.mmdb"
 
-# ── 状态持久化 ────────────────────────────────────────────────────
 profile:
   store-selected: true
   store-fake-ip: true
 
-# ── 域名嗅探 ─────────────────────────────────────────────────────
 sniffer:
   enable: true
   force-dns-mapping: true
@@ -97,8 +39,6 @@ sniffer:
       override-destination: true
     QUIC:
       ports: [443, 8443]
-      # false：只嗅探 SNI 用于规则匹配，不替换目标地址。
-      # true 会破坏 QUIC Connection ID 迁移机制，触发 H3→TCP 降级。
       override-destination: false
   skip-domain:
     - "Mijia Cloud"
@@ -106,8 +46,10 @@ sniffer:
     - "+.local"
     - "+.lan"
     - "localhost"
+    - "+.msftconnecttest.com"
+    - "+.msftncsi.com"
+    - "time.windows.com"
 
-# ── DNS ──────────────────────────────────────────────────────────
 dns:
   enable: true
   cache-algorithm: arc
@@ -119,15 +61,12 @@ dns:
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   fake-ip-filter-mode: blacklist
-
   fake-ip-filter:
-    # 本地 / 内网
     - "+.lan"
     - "+.local"
     - "localhost"
     - "+.localhost"
     - "+.home.arpa"
-    # NTP
     - "time.windows.com"
     - "time.nist.gov"
     - "+.ntp.org"
@@ -136,114 +75,43 @@ dns:
     - "ntp2.aliyun.com"
     - "ntp3.aliyun.com"
     - "ntp.tencent.com"
-    # Windows NCSI
     - "+.msftconnecttest.com"
     - "+.msftncsi.com"
     - "connectivitycheck.gstatic.com"
     - "captive.apple.com"
-    # Windows 系统服务（需真实 IP 直连）
-    - "+.rdp.microsoft.com"
-    - "+.remoteapp.windowsazure.com"
-    - "+.wsd.microsoft.com"
-    - "+.notify.windows.com"
-    - "+.wns.windows.com"
-    - "+.windowsupdate.com"
-    - "+.update.microsoft.com"
-    - "+.push.apple.com"
-    # Microsoft 认证（Edge 账号登录防异地告警）
-    - "+.office365.com"
-    - "+.teams.microsoft.com"
-    - "+.cloud.microsoft"
-    - "+.sharepoint.com"
-    - "+.skype.com"
-    - "+.skypeforbusiness.com"
-    - "+.onedrive.com"
-    - "+.lync.com"
-    # mDNS
     - "_ipp._tcp.local"
     - "_pdl-datastream._tcp.local"
     - "_services._dns-sd._udp.local"
-    # STUN/TURN/WebRTC（获真实 IP 后由 §1 丢弃）
-    - "+.stun.l.google.com"
-    - "stun.google.com"
-    - "+.stun.services.mozilla.com"
-    - "stun.cloudflare.com"
-    - "+.turn.twilio.com"
-    - "+.global.turn.twilio.com"
-    - "stun.stunprotocol.org"
-    - "+.xirsys.com"
-    - "+.relay.metered.ca"
-    - "+.webrtc.org"
-    - "stun.nextcloud.com"
-    - "stun.voip.blackberry.com"
-    - "+.coturn.net"
-    - "stun.sipgate.net"
-    - "stun.counterpath.com"
-    - "stun.schlund.de"
 
-  # 节点域名解析 — 只用国内 DoH（代理建立前境外 DoH 无法直连）
+  # 隧道建立前专用，必须纯 IP，无循环依赖
   proxy-server-nameserver:
     - 223.5.5.5
     - 119.29.29.29
-    - "https://dns.alidns.com/dns-query"
-    - "https://doh.pub/dns-query"
 
+  # Edge 直连 CN 域名时重解析真实 IP
   direct-nameserver:
     - 223.5.5.5
     - 119.29.29.29
-  direct-nameserver-follow-policy: true
+  direct-nameserver-follow-policy: false
 
   default-nameserver:
     - 223.5.5.5
     - 119.29.29.29
 
   nameserver:
-    # 境外 DNS 全部经 🌐 通用代理 隧道出站，ISP 不可见查询内容
-    - "https://dns.cloudflare.com/dns-query#🌐 通用代理"
-    - "https://dns.google/dns-query#🌐 通用代理"
-    - "https://doh.opendns.com/dns-query#🌐 通用代理"
+    - "https://dns.cloudflare.com/dns-query#🌐 DNS代理"
+    - "https://dns.google/dns-query#🌐 DNS代理"
 
   nameserver-policy:
-    "geosite:cn,private,apple,microsoft":
+    "geosite:private":
       - 223.5.5.5
       - 119.29.29.29
-      - "https://dns.alidns.com/dns-query"
     "geosite:geolocation-!cn":
-      - "https://dns.cloudflare.com/dns-query#🌐 通用代理"
-      - "https://dns.google/dns-query#🌐 通用代理"
+      - "https://dns.cloudflare.com/dns-query#🌐 DNS代理"
+      - "https://dns.google/dns-query#🌐 DNS代理"
 
-  # fallback — 防 GFW DNS 污染，境外域名自动切换代理 DoH 重新解析
-  fallback:
-    - "https://cloudflare-dns.com/dns-query#🌐 通用代理"
-    - "https://dns.google/dns-query#🌐 通用代理"
-
-  fallback-filter:
-    geoip: true
-    geoip-code: CN
-    geosite:
-      - gfw
-    domain:
-      - "+.google.com"
-      - "+.google.com.hk"
-      - "+.googleapis.com"
-      - "+.googlevideo.com"
-      - "+.facebook.com"
-      - "+.instagram.com"
-      - "+.twitter.com"
-      - "+.x.com"
-      - "+.youtube.com"
-      - "+.ytimg.com"
-    ipcidr:
-      - 240.0.0.0/4
-      - 0.0.0.0/32
-  disable-cache: false
-
-# ── TUN ──────────────────────────────────────────────────────────
 tun:
   enable: true
-  # mixed：TCP = system（低开销）+ UDP = gvisor（隔离好）
-  # ⚠️ Windows 防火墙需放行 mihomo 内核，否则 mixed/system 栈无法启动。
-  # 放行路径：Windows安全中心 → 允许应用通过防火墙 → 选中 mihomo 内核
   stack: mixed
   device: Meta
   auto-route: true
@@ -257,7 +125,6 @@ tun:
   mtu: 9000
   udp-timeout: 300
 
-# ── proxy-providers ──────────────────────────────────────────────
 proxy-providers:
 
   Edge-VPS1-Nodes:
@@ -350,7 +217,6 @@ proxy-providers:
       timeout: 5000
       lazy: true
 
-# ── proxy-groups ─────────────────────────────────────────────────
 proxy-groups:
 
   - name: "🔍 Edge代理"
@@ -515,13 +381,22 @@ proxy-groups:
     timeout: 5000
     lazy: false
 
-  - name: "🌐 通用代理"
-    # ⚠️ 此组同时作为 DNS nameserver/fallback 出口。
-    # 选择直连将导致所有境外 DNS 查询暴露给 ISP，隐私失效。
+  - name: "🌐 DNS代理"
+    # 首次加载后在 UI 中确认选中某个代理（建议选延迟最低的 VPS）
     type: select
     proxies:
-      - "🔍 Edge代理"
       - "🟢 Chrome代理"
+      - "🔍 Edge代理"
+      - "🦊 Firefox代理"
+      - "🦁 Brave代理"
+      - "🔴 Opera代理"
+      - "🟡 Vivaldi代理"
+
+  - name: "🌐 通用代理"
+    type: select
+    proxies:
+      - "🟢 Chrome代理"
+      - "🔍 Edge代理"
       - "🦊 Firefox代理"
       - "🦁 Brave代理"
       - "🔴 Opera代理"
@@ -534,32 +409,30 @@ proxy-groups:
       - DIRECT
 
   - name: "🛑 拦截"
-    # REJECT（默认）：返回 RST，§0 DoT 拦截必须用此项（触发客户端立即回退到53端口）
-    # REJECT-DROP：静默丢弃，§4b CN 域名拦截可选此项更隐蔽
     type: select
     proxies:
       - REJECT
       - REJECT-DROP
 
   - name: "🚫 UDP静默丢弃"
-    # REJECT-DROP：不返回任何响应，防止 RST 触发浏览器重试，彻底消除 WebRTC/QUIC 噪声
     type: select
     proxies:
       - REJECT-DROP
       - REJECT
 
-# ── rules ────────────────────────────────────────────────────────
+  - name: "🚫 CN拦截"
+    type: select
+    proxies:
+      - REJECT-DROP
+      - REJECT
+
 rules:
 
-  # §0  DoT/DoQ 853 → 拦截
-  # 防 Windows 11 系统加密 DNS 绕过 dns-hijack。
-  # 必须用 REJECT（RST 触发客户端立即回退到53端口被接管；DROP 会超时等待）
+  # §0 DoT/DoQ 853 → 拦截（防绕过 dns-hijack）
   - AND,((NETWORK,TCP),(DST-PORT,853)),🛑 拦截
   - AND,((NETWORK,UDP),(DST-PORT,853)),🛑 拦截
 
-  # §1  所有浏览器 WebRTC/STUN/TURN UDP → 静默丢弃
-  # 端口：3478-3481（标准STUN/TURN）· 5349-5350（DTLS）· 19302-19309（Google STUN）
-  # 配合 fake-ip-filter 中的 STUN 域名，彻底阻断 WebRTC IP 泄露
+  # §1 所有浏览器 WebRTC/STUN/TURN UDP → 静默丢弃
   - AND,((PROCESS-NAME,msedge.exe),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,msedge.exe),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,msedge.exe),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
@@ -584,24 +457,24 @@ rules:
   - AND,((PROCESS-NAME,opera.exe),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,opera.exe),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,opera.exe),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,opera_gx.exe),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,opera_gx.exe),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,opera_gx.exe),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,vivaldi.exe),(NETWORK,UDP),(DST-PORT,3478-3481)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,vivaldi.exe),(NETWORK,UDP),(DST-PORT,5349-5350)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,vivaldi.exe),(NETWORK,UDP),(DST-PORT,19302-19309)),🚫 UDP静默丢弃
 
   # §1b 非 Edge 浏览器 QUIC UDP/443 → 静默丢弃
-  # [v1.4-新增] VMess/VLESS/Trojan 为 TCP 隧道，无法有效中继 UDP。
-  # QUIC 包进入 §8 后握手超时 → H3→TCP 降级抖动 → 产生代理特征。
-  # 丢弃后浏览器直接使用 TCP/TLS（HTTP/2），连接更干净稳定。
-  # Edge 不在此段，保留 QUIC（Edge VPS 可能支持 UDP 中继）。
   - AND,((PROCESS-NAME,chrome.exe),(NETWORK,UDP),(DST-PORT,443)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,chromium.exe),(NETWORK,UDP),(DST-PORT,443)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,firefox.exe),(NETWORK,UDP),(DST-PORT,443)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,firefox-nightly.exe),(NETWORK,UDP),(DST-PORT,443)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,brave.exe),(NETWORK,UDP),(DST-PORT,443)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,opera.exe),(NETWORK,UDP),(DST-PORT,443)),🚫 UDP静默丢弃
+  - AND,((PROCESS-NAME,opera_gx.exe),(NETWORK,UDP),(DST-PORT,443)),🚫 UDP静默丢弃
   - AND,((PROCESS-NAME,vivaldi.exe),(NETWORK,UDP),(DST-PORT,443)),🚫 UDP静默丢弃
 
-  # §2  私有 / 内网 / CGNAT IP → 直连
+  # §2 私有 / 内网 / CGNAT IP → 直连
   - IP-CIDR,127.0.0.0/8,🚫 直连,no-resolve
   - IP-CIDR,10.0.0.0/8,🚫 直连,no-resolve
   - IP-CIDR,172.16.0.0/12,🚫 直连,no-resolve
@@ -611,9 +484,7 @@ rules:
   - IP-CIDR,224.0.0.0/4,🚫 直连,no-resolve
   - IP-CIDR,240.0.0.0/4,🚫 直连,no-resolve
 
-  # §3  Windows NCSI / NTP → 直连
-  # NTP 缺少直连规则会被 §13 兜底送代理 → UDP 123 代理不转发 →
-  # 时钟偏差 → TLS 证书验证失败 → HTTPS 全线崩溃
+  # §3 Windows NCSI / NTP → 直连
   - DOMAIN,www.msftconnecttest.com,🚫 直连
   - DOMAIN,ipv6.msftconnecttest.com,🚫 直连
   - DOMAIN,www.msftncsi.com,🚫 直连
@@ -629,94 +500,42 @@ rules:
   - DOMAIN,ntp.tencent.com,🚫 直连
   - DOMAIN-SUFFIX,ntp.org,🚫 直连
 
-  # §4  Edge + WebView2：CN 域名/IP → 直连
-  # GEOSITE 匹配域名；GEOIP no-resolve 仅兜底直接输入的纯 CN IP
+  # §4-geo Edge + WebView2：所有微软域名 → 强制代理（必须在 §4 之前）
+  # edgeservices.bing.com 显式保留：bing.com 属于 GEOSITE,cn，需先截获
+  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,edgeservices.bing.com)),🔍 Edge代理
+  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,edgeservices.bing.com)),🔍 Edge代理
+  # GEOSITE,microsoft 面覆盖：microsoft.com / windowsazure.com / office.com 等全部走代理
+  - AND,((PROCESS-NAME,msedge.exe),(GEOSITE,microsoft)),🔍 Edge代理
+  - AND,((PROCESS-NAME,msedgewebview2.exe),(GEOSITE,microsoft)),🔍 Edge代理
+
+  # §4 Edge + WebView2：CN 域名/IP → 直连
   - AND,((PROCESS-NAME,msedge.exe),(GEOSITE,cn)),🚫 直连
   - AND,((PROCESS-NAME,msedge.exe),(GEOIP,cn,no-resolve)),🚫 直连
   - AND,((PROCESS-NAME,msedgewebview2.exe),(GEOSITE,cn)),🚫 直连
   - AND,((PROCESS-NAME,msedgewebview2.exe),(GEOIP,cn,no-resolve)),🚫 直连
 
-  # §4b 其他浏览器：CN 域名/IP → 拦截（防真实 IP 暴露）
-  # fake-ip 模式下 CN 域名返回假 IP，此处 GEOSITE 在域名层拦截
-  # GEOIP no-resolve 仅拦截直接输入的纯 CN IP
-  - AND,((PROCESS-NAME,chrome.exe),(GEOSITE,cn)),🛑 拦截
-  - AND,((PROCESS-NAME,chrome.exe),(GEOIP,cn,no-resolve)),🛑 拦截
-  - AND,((PROCESS-NAME,chromium.exe),(GEOSITE,cn)),🛑 拦截
-  - AND,((PROCESS-NAME,chromium.exe),(GEOIP,cn,no-resolve)),🛑 拦截
-  - AND,((PROCESS-NAME,firefox.exe),(GEOSITE,cn)),🛑 拦截
-  - AND,((PROCESS-NAME,firefox.exe),(GEOIP,cn,no-resolve)),🛑 拦截
-  - AND,((PROCESS-NAME,firefox-nightly.exe),(GEOSITE,cn)),🛑 拦截
-  - AND,((PROCESS-NAME,firefox-nightly.exe),(GEOIP,cn,no-resolve)),🛑 拦截
-  - AND,((PROCESS-NAME,brave.exe),(GEOSITE,cn)),🛑 拦截
-  - AND,((PROCESS-NAME,brave.exe),(GEOIP,cn,no-resolve)),🛑 拦截
-  - AND,((PROCESS-NAME,opera.exe),(GEOSITE,cn)),🛑 拦截
-  - AND,((PROCESS-NAME,opera.exe),(GEOIP,cn,no-resolve)),🛑 拦截
-  - AND,((PROCESS-NAME,vivaldi.exe),(GEOSITE,cn)),🛑 拦截
-  - AND,((PROCESS-NAME,vivaldi.exe),(GEOIP,cn,no-resolve)),🛑 拦截
+  # §4b 非 Edge 浏览器：CN 域名/IP → REJECT-DROP
+  - AND,((PROCESS-NAME,chrome.exe),(GEOSITE,cn)),🚫 CN拦截
+  - AND,((PROCESS-NAME,chrome.exe),(GEOIP,cn,no-resolve)),🚫 CN拦截
+  - AND,((PROCESS-NAME,chromium.exe),(GEOSITE,cn)),🚫 CN拦截
+  - AND,((PROCESS-NAME,chromium.exe),(GEOIP,cn,no-resolve)),🚫 CN拦截
+  - AND,((PROCESS-NAME,firefox.exe),(GEOSITE,cn)),🚫 CN拦截
+  - AND,((PROCESS-NAME,firefox.exe),(GEOIP,cn,no-resolve)),🚫 CN拦截
+  - AND,((PROCESS-NAME,firefox-nightly.exe),(GEOSITE,cn)),🚫 CN拦截
+  - AND,((PROCESS-NAME,firefox-nightly.exe),(GEOIP,cn,no-resolve)),🚫 CN拦截
+  - AND,((PROCESS-NAME,brave.exe),(GEOSITE,cn)),🚫 CN拦截
+  - AND,((PROCESS-NAME,brave.exe),(GEOIP,cn,no-resolve)),🚫 CN拦截
+  - AND,((PROCESS-NAME,opera.exe),(GEOSITE,cn)),🚫 CN拦截
+  - AND,((PROCESS-NAME,opera.exe),(GEOIP,cn,no-resolve)),🚫 CN拦截
+  - AND,((PROCESS-NAME,opera_gx.exe),(GEOSITE,cn)),🚫 CN拦截
+  - AND,((PROCESS-NAME,opera_gx.exe),(GEOIP,cn,no-resolve)),🚫 CN拦截
+  - AND,((PROCESS-NAME,vivaldi.exe),(GEOSITE,cn)),🚫 CN拦截
+  - AND,((PROCESS-NAME,vivaldi.exe),(GEOIP,cn,no-resolve)),🚫 CN拦截
 
-  # §5  Edge + WebView2：Microsoft 服务 → 直连（防账号异地登录告警）
-  # 必须在 §8 PROCESS-NAME 兜底规则之前
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,microsoft.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,microsoftonline.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,live.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,office.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,office365.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,windows.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,windowsupdate.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,azure.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,bing.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,bing.net)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,msn.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,msedge.net)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,cloud.microsoft)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,sharepoint.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,skype.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,skypeforbusiness.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,onedrive.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,lync.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,microsoft.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,microsoftonline.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,live.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,office.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,office365.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,windows.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,windowsupdate.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,azure.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,bing.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,bing.net)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,msn.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,msedge.net)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,cloud.microsoft)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,sharepoint.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,skype.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,skypeforbusiness.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,onedrive.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,lync.com)),🚫 直连
-
-  # §6  Edge + WebView2：国内支付 / 电商 → 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,alipay.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,alipayobjects.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,antgroup.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,taobao.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,tmall.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,jd.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,jdpay.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,weixin.qq.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedge.exe),(DOMAIN-SUFFIX,wxpay.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,alipay.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,alipayobjects.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,antgroup.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,taobao.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,tmall.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,jd.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,jdpay.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,weixin.qq.com)),🚫 直连
-  - AND,((PROCESS-NAME,msedgewebview2.exe),(DOMAIN-SUFFIX,wxpay.com)),🚫 直连
-
-  # §7  WebView2 兜底 → Edge 代理
+  # §7 WebView2 兜底 → Edge 代理
   - PROCESS-NAME,msedgewebview2.exe,🔍 Edge代理
 
-  # §8  各浏览器进程 → 对应 VPS 代理组
+  # §8 各浏览器进程 → 对应 VPS 代理组
   - PROCESS-NAME,msedge.exe,🔍 Edge代理
   - PROCESS-NAME,msedge_proxy.exe,🔍 Edge代理
   - PROCESS-NAME,MicrosoftEdgeUpdate.exe,🚫 直连
@@ -730,38 +549,19 @@ rules:
   - PROCESS-NAME,brave.exe,🦁 Brave代理
   - PROCESS-NAME,BraveUpdate.exe,🚫 直连
   - PROCESS-NAME,opera.exe,🔴 Opera代理
+  - PROCESS-NAME,opera_gx.exe,🔴 Opera代理
   - PROCESS-NAME,opera_autoupdate.exe,🚫 直连
   - PROCESS-NAME,vivaldi.exe,🟡 Vivaldi代理
 
-  # §9  全局（非浏览器）Microsoft 域名 → 直连
-  - DOMAIN-SUFFIX,microsoft.com,🚫 直连
-  - DOMAIN-SUFFIX,microsoftonline.com,🚫 直连
-  - DOMAIN-SUFFIX,live.com,🚫 直连
-  - DOMAIN-SUFFIX,office.com,🚫 直连
-  - DOMAIN-SUFFIX,office365.com,🚫 直连
-  - DOMAIN-SUFFIX,windows.com,🚫 直连
-  - DOMAIN-SUFFIX,windowsupdate.com,🚫 直连
-  - DOMAIN-SUFFIX,azure.com,🚫 直连
-  - DOMAIN-SUFFIX,bing.com,🚫 直连
-  - DOMAIN-SUFFIX,bing.net,🚫 直连
-  - DOMAIN-SUFFIX,msn.com,🚫 直连
-  - DOMAIN-SUFFIX,msedge.net,🚫 直连
-  - DOMAIN-SUFFIX,cloud.microsoft,🚫 直连
-  - DOMAIN-SUFFIX,sharepoint.com,🚫 直连
-  - DOMAIN-SUFFIX,skype.com,🚫 直连
-  - DOMAIN-SUFFIX,skypeforbusiness.com,🚫 直连
-  - DOMAIN-SUFFIX,onedrive.com,🚫 直连
-  - DOMAIN-SUFFIX,lync.com,🚫 直连
-
-  # §10  广告拦截
+  # §10 广告拦截
   - GEOSITE,category-ads-all,🛑 拦截
 
-  # §11  国内流量（非浏览器进程）→ 直连
+  # §11 国内流量（非浏览器系统进程）→ 直连
   - GEOSITE,cn,🚫 直连
   - GEOIP,cn,🚫 直连,no-resolve
 
-  # §12  国外域名 → 通用代理
+  # §12 国外域名（非浏览器进程）→ 通用代理
   - GEOSITE,geolocation-!cn,🌐 通用代理
 
-  # §13  兜底
+  # §13 兜底
   - MATCH,🌐 通用代理
