@@ -214,6 +214,11 @@ function main(config, profileName) {
   config["find-process-mode"]         = "always";
   config["udp-timeout"]               = 300;
 
+  // Round 1 优化：启用 external-controller（支持浏览器脚本时区自动化）
+  config["external-controller"]       = "127.0.0.1:9090";
+  config["external-ui"]               = "ui";
+  config["secret"]                    = "";  // 本地使用可留空
+
   config["geo-auto-update"]     = true;
   config["geo-update-interval"] = 24;
   config["geodata-mode"]        = true;
