@@ -34,9 +34,10 @@ const SUB = {
 };
 
 // Ghost-Proxy AWG 双轨专用：
-// 1. 把落地机输出的 MIHOMO_STATIC_AWG_PROXY_START/END 之间的 AWG-Tunnel 对象粘贴到这里。
+// 1. 把落地机输出的 GHOST_STATIC_PROXIES_JS_OBJECT_START/END 之间的对象粘贴到这里。
 // 2. Sub-Store 订阅只放 SUBSTORE_PROVIDER_YAML/JSON 里的主轨、备轨可见节点。
-// 3. 这样 GLOBAL/浏览器代理组只显示主轨/备轨，AWG-Tunnel 只作为 dialer-proxy 底层依赖。
+// 3. 不要把完整 Mihomo Profile 导入 Sub-Store；否则 Sub-Store 会把 AWG-Tunnel 扁平化成普通节点。
+// 4. 这样 GLOBAL/浏览器代理组只显示主轨/备轨，AWG-Tunnel 只作为 dialer-proxy 底层依赖。
 const GHOST_STATIC_PROXIES = [
   // 示例：
   // {
