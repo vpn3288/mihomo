@@ -33,6 +33,30 @@ const SUB = {
   Default:   "https://YOUR_DEFAULT_SUBSCRIPTION_URL",
 };
 
+// Ghost-Proxy AWG 双轨专用：
+// 1. 把落地机输出的 MIHOMO_STATIC_AWG_PROXY_START/END 之间的 AWG-Tunnel 对象粘贴到这里。
+// 2. Sub-Store 订阅只放 SUBSTORE_PROVIDER_YAML/JSON 里的主轨、备轨可见节点。
+// 3. 这样 GLOBAL/浏览器代理组只显示主轨/备轨，AWG-Tunnel 只作为 dialer-proxy 底层依赖。
+const GHOST_STATIC_PROXIES = [
+  // 示例：
+  // {
+  //   name: "AWG-Tunnel",
+  //   type: "wireguard",
+  //   server: "1.2.3.4",
+  //   port: 51821,
+  //   ip: "10.8.0.2",
+  //   "private-key": "...",
+  //   "public-key": "...",
+  //   hidden: true,
+  //   udp: true,
+  //   mtu: 1360,
+  //   "allowed-ips": ["10.8.0.0/24"],
+  //   "amnezia-wg-option": { jc: 5, jmin: 50, jmax: 200, s1: 1, s2: 2, h1: 3, h2: 4, h3: 5, h4: 6 },
+  // },
+];
+
+const GHOST_PROVIDER_EXCLUDE_FILTER = "^(AWG-Tunnel|DIRECT|REJECT|REJECT-DROP)$";
+
 // ══════════════════════════════════════════════════════════════════
 //  2. 运行时环境与浏览器进程矩阵
 // ══════════════════════════════════════════════════════════════════
@@ -229,6 +253,7 @@ function main(config, profileName) {
     "mmdb":    "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb",
   };
   config["profile"] = { "store-selected": true, "store-fake-ip": false };
+  config["proxies"] = GHOST_STATIC_PROXIES;
 
   config["tun"] = {
     "enable":                true,
@@ -291,6 +316,9 @@ function _buildProviders() {
       "interval":     86400,
       "path":         `./providers/${n.toLowerCase()}.yaml`,
       "health-check": HEALTH_CHECK,
+      ...(GHOST_STATIC_PROXIES.length > 0 && {
+        "exclude-filter": GHOST_PROVIDER_EXCLUDE_FILTER,
+      }),
       ...(ENABLE_PROVIDER_OVERRIDE && {
         "override": { "udp": true, "client-fingerprint": fp },
       }),
@@ -303,6 +331,9 @@ function _buildProviders() {
     "interval":     86400,
     "path":         "./providers/default.yaml",
     "health-check": HEALTH_CHECK,
+    ...(GHOST_STATIC_PROXIES.length > 0 && {
+      "exclude-filter": GHOST_PROVIDER_EXCLUDE_FILTER,
+    }),
     ...(ENABLE_PROVIDER_OVERRIDE && {
       "override": { "udp": true, "client-fingerprint": "chrome" },
     }),
