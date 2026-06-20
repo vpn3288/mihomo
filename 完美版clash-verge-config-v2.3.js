@@ -113,6 +113,12 @@ function validateSubscriptions() {
       throw new Error("Invalid subscription URL: " + key + " -> " + url);
     }
   }
+
+  if (SUB.OtherApps && SUB.OtherApps.indexOf("YOUR_") < 0) {
+    if (SUB.OtherApps.indexOf("http://") !== 0 && SUB.OtherApps.indexOf("https://") !== 0) {
+      throw new Error("Invalid subscription URL: OtherApps -> " + SUB.OtherApps);
+    }
+  }
 }
 
 function buildDns() {
