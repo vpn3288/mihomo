@@ -68,15 +68,15 @@ function main(config, profileName) {
 
   config.tun = {
     enable: true,
-    stack: "system",
-    device: "Meta",
+    stack: "mixed",
+    device: "Mihomo",
     "auto-route": true,
     "strict-route": true,
     "auto-detect-interface": true,
     "dns-hijack": ["any:53", "tcp://any:53"],
     mtu: 1500,
     ipv6: false,
-    "endpoint-independent-nat": true
+    "endpoint-independent-nat": false
   };
 
   config.sniffer = {
