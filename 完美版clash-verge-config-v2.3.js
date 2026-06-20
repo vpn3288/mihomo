@@ -148,7 +148,7 @@ function buildDns() {
     "prefer-h3": false,
     "default-nameserver": ["223.5.5.5", "119.29.29.29"],
     nameserver: DOMESTIC_DNS,
-    "proxy-server-nameserver": ["223.5.5.5", "119.29.29.29", "8.8.8.8", "1.1.1.1"],
+    "proxy-server-nameserver": ["223.5.5.5", "119.29.29.29"],
     "respect-rules": true,
     "nameserver-policy": {
       "geosite:private": DOMESTIC_DNS,
@@ -243,9 +243,8 @@ function buildGroups() {
     groups.push(makeUrlTestGroup(BROWSERS[i].group, BROWSERS[i].provider));
   }
 
-  groups.push(makeUrlTestGroup("DefaultAuto", "provider-default"));
+  groups.push(makeUrlTestGroup("DefaultProxy", "provider-default"));
   groups.push(makeUrlTestGroup("OtherAppsProxy", "provider-other-apps"));
-  groups.push({ name: "DefaultProxy", type: "select", proxies: ["DefaultAuto", "DIRECT"] });
   groups.push({ name: "Direct", type: "select", proxies: ["DIRECT"] });
   groups.push({ name: "AdBlock", type: "select", proxies: ["REJECT-DROP", "REJECT", "DIRECT"] });
   groups.push({ name: "FinalFallback", type: "select", proxies: ["DefaultProxy", "DIRECT"] });
