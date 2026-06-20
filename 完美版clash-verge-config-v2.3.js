@@ -298,8 +298,7 @@ function _buildProviders() {
   const providers = {};
 
   const fingerprintMap = {
-    // v2.3: Edge channel reuses the Chrome TLS fingerprint for better node compatibility.
-    Edge:      "chrome",
+    Edge:      "edge",
     Chrome:    "chrome",
     Firefox:   "firefox",
     Brave:     "chrome",
@@ -316,7 +315,7 @@ function _buildProviders() {
       "type":         "http",
       "url":          SUB[n],
       "interval":     86400,
-      "path":         n === "Edge" ? "./providers/edge-v2.3.yaml" : `./providers/${n.toLowerCase()}.yaml`,
+      "path":         `./providers/${n.toLowerCase()}.yaml`,
       "health-check": HEALTH_CHECK,
       ...(GHOST_STATIC_PROXIES.length > 0 && {
         "exclude-filter": GHOST_PROVIDER_EXCLUDE_FILTER,
