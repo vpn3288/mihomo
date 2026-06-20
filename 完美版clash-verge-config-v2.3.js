@@ -41,8 +41,6 @@ var HEALTH_CHECK = {
 
 var DOMESTIC_DNS = ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"];
 var FOREIGN_DNS = ["https://1.1.1.1/dns-query", "https://1.0.0.1/dns-query", "https://9.9.9.9/dns-query"];
-var RULE_CDN = "https://testingcf.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/";
-
 function main(config, profileName) {
   if (!config || typeof config !== "object") {
     config = {};
@@ -149,7 +147,7 @@ function buildDns() {
     ],
     "prefer-h3": false,
     "default-nameserver": ["223.5.5.5", "119.29.29.29"],
-    nameserver: FOREIGN_DNS,
+    nameserver: DOMESTIC_DNS,
     "proxy-server-nameserver": ["223.5.5.5", "119.29.29.29", "8.8.8.8", "1.1.1.1"],
     "respect-rules": true,
     "nameserver-policy": {
@@ -157,6 +155,9 @@ function buildDns() {
       "geosite:cn": DOMESTIC_DNS,
       "geosite:geolocation-cn": DOMESTIC_DNS,
       "geosite:gfw": FOREIGN_DNS,
+      "+.998488.xyz": DOMESTIC_DNS,
+      "+.jsdelivr.net": DOMESTIC_DNS,
+      "+.githubusercontent.com": DOMESTIC_DNS,
       "+.msftconnecttest.com": DOMESTIC_DNS,
       "+.msftncsi.com": DOMESTIC_DNS
     },
@@ -224,6 +225,8 @@ function makeProvider(url, path, fp) {
     url: url,
     interval: 86400,
     path: path,
+    proxy: "DIRECT",
+    "exclude-type": "anytls",
     "health-check": HEALTH_CHECK,
     override: {
       udp: true,
@@ -266,28 +269,7 @@ function makeUrlTestGroup(name, provider) {
 }
 
 function buildRuleProviders() {
-  return {
-    reject: makeRuleProvider("domain", "reject.txt"),
-    private: makeRuleProvider("domain", "private.txt"),
-    direct: makeRuleProvider("domain", "direct.txt"),
-    proxy: makeRuleProvider("domain", "proxy.txt"),
-    gfw: makeRuleProvider("domain", "gfw.txt"),
-    "tld-not-cn": makeRuleProvider("domain", "tld-not-cn.txt"),
-    lancidr: makeRuleProvider("ipcidr", "lancidr.txt"),
-    cncidr: makeRuleProvider("ipcidr", "cncidr.txt"),
-    telegramcidr: makeRuleProvider("ipcidr", "telegramcidr.txt")
-  };
-}
-
-function makeRuleProvider(behavior, file) {
-  return {
-    type: "http",
-    format: "text",
-    behavior: behavior,
-    interval: 43200,
-    url: RULE_CDN + file,
-    path: "./ruleset/loyalsoldier/" + file
-  };
+  return {};
 }
 
 function buildRules() {
@@ -301,6 +283,14 @@ function buildRules() {
   rules.push("IP-CIDR,223.5.5.5/32,Direct,no-resolve");
   rules.push("IP-CIDR,119.29.29.29/32,Direct,no-resolve");
 
+  rules.push("PROCESS-NAME,verge-mihomo.exe,Direct");
+  rules.push("PROCESS-NAME,mihomo.exe,Direct");
+  rules.push("PROCESS-NAME,clash-verge.exe,Direct");
+  rules.push("DOMAIN-SUFFIX,998488.xyz,Direct");
+  rules.push("DOMAIN-SUFFIX,sub-ui.998488.xyz,Direct");
+  rules.push("DOMAIN-SUFFIX,jsdelivr.net,Direct");
+  rules.push("DOMAIN-SUFFIX,testingcf.jsdelivr.net,Direct");
+  rules.push("DOMAIN-SUFFIX,githubusercontent.com,Direct");
   rules.push("PROCESS-NAME,DeliveryOptimization.exe,Direct");
   rules.push("AND,((NETWORK,UDP),(DST-PORT,123)),Direct");
   rules.push("DOMAIN-SUFFIX,ntp.org,Direct");
@@ -312,13 +302,10 @@ function buildRules() {
   rules.push("DOMAIN-SUFFIX,delivery.mp.microsoft.com,Direct");
   rules.push("IP-CIDR,224.0.0.0/4,Direct,no-resolve");
   rules.push("GEOIP,PRIVATE,Direct,no-resolve");
-  rules.push("RULE-SET,private,Direct");
-  rules.push("RULE-SET,lancidr,Direct,no-resolve");
 
   rules.push("AND,((NETWORK,UDP),(DST-PORT,443)),REJECT");
 
   rules.push("GEOSITE,category-ads-all,AdBlock");
-  rules.push("RULE-SET,reject,AdBlock");
 
   for (i = 0; i < BROWSERS.length; i++) {
     var b = BROWSERS[i];
@@ -328,14 +315,8 @@ function buildRules() {
   }
 
   rules.push("GEOSITE,telegram,DefaultProxy");
-  rules.push("RULE-SET,telegramcidr,DefaultProxy,no-resolve");
-  rules.push("RULE-SET,direct,Direct");
   rules.push("GEOSITE,cn,Direct");
-  rules.push("RULE-SET,cncidr,Direct,no-resolve");
   rules.push("GEOIP,CN,Direct,no-resolve");
-  rules.push("RULE-SET,proxy,DefaultProxy");
-  rules.push("RULE-SET,gfw,DefaultProxy");
-  rules.push("RULE-SET,tld-not-cn,DefaultProxy");
   rules.push("GEOSITE,geolocation-!cn,DefaultProxy");
   rules.push("NETWORK,TCP,OtherAppsProxy");
   rules.push("NETWORK,UDP,OtherAppsProxy");
