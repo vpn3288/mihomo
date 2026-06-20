@@ -34,9 +34,10 @@ var BROWSERS = [
 var HEALTH_CHECK = {
   enable: true,
   url: "https://www.gstatic.com/generate_204",
-  interval: 300,
+  interval: 600,
   timeout: 5000,
-  lazy: true
+  lazy: true,
+  "expected-status": 204
 };
 
 var DOMESTIC_DNS = ["https://doh.pub/dns-query", "https://dns.alidns.com/dns-query"];
@@ -85,8 +86,7 @@ function main(config, profileName) {
     "override-destination": false,
     sniff: {
       HTTP: { ports: [80, "8080-8880"], "override-destination": true },
-      TLS: { ports: [443, 8443], "override-destination": true },
-      QUIC: { ports: [443], "override-destination": true }
+      TLS: { ports: [443, 8443], "override-destination": true }
     }
   };
 
@@ -259,9 +259,10 @@ function makeUrlTestGroup(name, provider) {
     type: "url-test",
     use: [provider],
     url: "https://www.gstatic.com/generate_204",
-    interval: 300,
+    interval: 600,
     timeout: 5000,
     lazy: true,
+    "expected-status": 204,
     "max-failed-times": 2,
     tolerance: 200,
     "disable-udp": false
@@ -314,10 +315,10 @@ function buildRules() {
     }
   }
 
-  rules.push("GEOSITE,telegram,DefaultProxy");
+  rules.push("GEOSITE,telegram,OtherAppsProxy");
   rules.push("GEOSITE,cn,Direct");
   rules.push("GEOIP,CN,Direct,no-resolve");
-  rules.push("GEOSITE,geolocation-!cn,DefaultProxy");
+  rules.push("GEOSITE,geolocation-!cn,OtherAppsProxy");
   rules.push("NETWORK,TCP,OtherAppsProxy");
   rules.push("NETWORK,UDP,OtherAppsProxy");
   rules.push("MATCH,FinalFallback");
