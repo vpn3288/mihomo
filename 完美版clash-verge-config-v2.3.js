@@ -30,7 +30,6 @@ const SUB = {
   LibreWolf: "https://YOUR_LIBREWOLF_SUBSCRIPTION_URL",
   Vivaldi:   "https://YOUR_VIVALDI_SUBSCRIPTION_URL",
   Opera:     "https://YOUR_OPERA_SUBSCRIPTION_URL",
-  OtherApps: "https://YOUR_OTHER_APPS_SUBSCRIPTION_URL",
   Default:   "https://YOUR_DEFAULT_SUBSCRIPTION_URL",
 };
 
@@ -224,7 +223,6 @@ function main(config, profileName) {
 
   Object.keys(SUB).forEach(key => {
     const v = SUB[key];
-    if (key === "OtherApps" && v.includes("YOUR_")) return;
     if (v.includes("YOUR_")) throw new Error(`[致命警告] 订阅链接未替换: ${key} → ${v}`);
     if (!v.startsWith("http")) throw new Error(`[致命警告] 订阅链接格式错误（必须以 http 开头）: ${key} → ${v}`);
   });
@@ -300,8 +298,7 @@ function _buildProviders() {
   const providers = {};
 
   const fingerprintMap = {
-    // v2.3: Edge provider uses chrome fingerprint for better node compatibility.
-    // Some subscriptions/protocols do not handle "edge" fingerprint reliably.
+    // v2.3: Edge channel reuses the Chrome TLS fingerprint for better node compatibility.
     Edge:      "chrome",
     Chrome:    "chrome",
     Firefox:   "firefox",
@@ -344,20 +341,6 @@ function _buildProviders() {
     }),
   };
 
-  providers["provider-other-apps"] = {
-    "type":         "http",
-    "url":          SUB.OtherApps.includes("YOUR_") ? SUB.Default : SUB.OtherApps,
-    "interval":     86400,
-    "path":         "./providers/other-apps.yaml",
-    "health-check": HEALTH_CHECK,
-    ...(GHOST_STATIC_PROXIES.length > 0 && {
-      "exclude-filter": GHOST_PROVIDER_EXCLUDE_FILTER,
-    }),
-    ...(ENABLE_PROVIDER_OVERRIDE && {
-      "override": { "udp": true, "client-fingerprint": "chrome" },
-    }),
-  };
-
   return providers;
 }
 
@@ -381,8 +364,6 @@ function _buildGroups() {
 
   groups.push({ ...GROUP_BASE, "name": "默认自动", "type": "url-test", "use": ["provider-default"], "disable-udp": false });
   groups.push({ "name": "默认代理", "type": "select", "proxies": ["默认自动", "DIRECT"] });
-  groups.push({ ...GROUP_BASE, "name": "其他软件自动", "type": "url-test", "use": ["provider-other-apps"], "disable-udp": false });
-  groups.push({ "name": "其他软件代理", "type": "select", "proxies": ["其他软件自动", "默认代理", "DIRECT"] });
   groups.push({ "name": "国内直连", "type": "select", "proxies": ["DIRECT"] });
   groups.push({ "name": "广告拦截", "type": "select", "proxies": ["REJECT-DROP", "REJECT", "DIRECT"] });
   groups.push({ "name": "漏网之鱼", "type": "select", "proxies": ["默认代理", "DIRECT"] });
@@ -487,11 +468,6 @@ function _buildRules() {
       rules.push(`PROCESS-NAME,${proc},${n}代理`);
     });
   });
-
-  // v2.3: non-browser apps use an independent proxy channel.
-  // Browser process rules are above this block, so browser traffic is not affected.
-  rules.push("NETWORK,TCP,其他软件代理");
-  rules.push("NETWORK,UDP,其他软件代理");
 
   // ⑨ Telegram 专线（系统原生客户端兜底，浏览器内 Telegram 已在 ⑧ 接管）
   rules.push("GEOSITE,telegram,默认代理");
