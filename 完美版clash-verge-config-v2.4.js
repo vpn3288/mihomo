@@ -19,7 +19,7 @@ var SUB = {
 };
 
 var BROWSERS = [
-  { key: "Edge", group: "EdgeProxy", provider: "provider-edge", path: "./providers/edge.yaml", fp: "chrome", processes: ["msedge.exe", "msedgewebview2.exe", "Copilot.exe", "SearchHost.exe", "StartMenuExperienceHost.exe", "ShellExperienceHost.exe", "WebViewHost.exe"], smartRoute: true },
+  { key: "Edge", group: "EdgeProxy", provider: "provider-edge", path: "./providers/edge.yaml", fp: "chrome", processes: ["msedge.exe"], smartRoute: true },
   { key: "Chrome", group: "ChromeProxy", provider: "provider-chrome", path: "./providers/chrome.yaml", fp: "chrome", processes: ["chrome.exe"], smartRoute: false },
   { key: "Firefox", group: "FirefoxProxy", provider: "provider-firefox", path: "./providers/firefox.yaml", fp: "firefox", processes: ["firefox.exe"], smartRoute: false },
   { key: "Brave", group: "BraveProxy", provider: "provider-brave", path: "./providers/brave.yaml", fp: "chrome", processes: ["brave.exe"], smartRoute: false },
@@ -54,7 +54,7 @@ function main(config, profileName) {
   config["log-level"] = "info";
   config["unified-delay"] = true;
   config["tcp-concurrent"] = true;
-  config["find-process-mode"] = "strict";
+  config["find-process-mode"] = "always";
   config["keep-alive-interval"] = 30;
 
   config.profile = {
@@ -70,9 +70,6 @@ function main(config, profileName) {
     "strict-route": true,
     "auto-detect-interface": true,
     "dns-hijack": ["any:53"],
-    mtu: 9000,
-    gso: true,
-    "gso-max-size": 65536,
     ipv6: false,
     "endpoint-independent-nat": false
   };
@@ -130,6 +127,8 @@ function buildDns() {
     enable: true,
     listen: "0.0.0.0:1053",
     ipv6: false,
+    "prefer-h3": false,
+    "respect-rules": true,
     "enhanced-mode": "fake-ip",
     "fake-ip-range": "198.18.0.1/16",
     "fake-ip-filter-mode": "blacklist",
@@ -155,7 +154,7 @@ function buildDns() {
     ],
     "default-nameserver": ["223.5.5.5", "119.29.29.29"],
     nameserver: DOMESTIC_DNS,
-    "proxy-server-nameserver": DOMESTIC_DNS,
+    "proxy-server-nameserver": ["223.5.5.5", "119.29.29.29"],
     "nameserver-policy": {
       "geosite:private": DOMESTIC_DNS,
       "geosite:cn": DOMESTIC_DNS,
@@ -182,11 +181,7 @@ function buildProviders() {
 
   for (i = 0; i < BROWSERS.length; i++) {
     var b = BROWSERS[i];
-    if (b.key === "Edge") {
-      providers[b.provider] = makeEdgeProvider(SUB[b.key], b.path, b.fp);
-    } else {
-      providers[b.provider] = makeProvider(SUB[b.key], b.path, b.fp);
-    }
+    providers[b.provider] = makeProvider(SUB[b.key], b.path, b.fp);
   }
 
   providers["provider-default"] = makeProvider(SUB.Default, "./providers/default.yaml", "chrome");
@@ -199,22 +194,6 @@ function getOtherAppsUrl() {
     return SUB.Default;
   }
   return SUB.OtherApps;
-}
-
-function makeEdgeProvider(url, path, fp) {
-  return {
-    type: "http",
-    url: url,
-    interval: 86400,
-    path: path,
-    proxy: "DIRECT",
-    "exclude-type": "anytls",
-    "health-check": HEALTH_CHECK,
-    override: {
-      udp: true,
-      "client-fingerprint": fp
-    }
-  };
 }
 
 function makeProvider(url, path, fp) {
@@ -237,28 +216,16 @@ function buildGroups() {
   var groups = [];
   var i;
 
-  // Edge 专用智能分流组：国内直连，国外走代理
-  groups.push({
-    name: "EdgeAuto",
-    type: "select",
-    proxies: ["EdgeProxy", "Direct"],
-    icon: "https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Microsoft.png"
-  });
-
   // 其他浏览器：纯代理组
   for (i = 0; i < BROWSERS.length; i++) {
-    if (BROWSERS[i].key !== "Edge") {
-      groups.push(makeUrlTestGroup(BROWSERS[i].group, BROWSERS[i].provider));
-    } else {
-      groups.push(makeUrlTestGroup(BROWSERS[i].group, BROWSERS[i].provider));
-    }
+    groups.push(makeUrlTestGroup(BROWSERS[i].group, BROWSERS[i].provider));
   }
 
   groups.push(makeUrlTestGroup("DefaultProxy", "provider-default"));
   groups.push(makeUrlTestGroup("OtherAppsProxy", "provider-other-apps"));
   groups.push({ name: "Direct", type: "select", proxies: ["DIRECT"] });
   groups.push({ name: "AdBlock", type: "select", proxies: ["REJECT-DROP", "REJECT", "DIRECT"] });
-  groups.push({ name: "FinalFallback", type: "select", proxies: ["DefaultProxy", "DIRECT"] });
+  groups.push({ name: "FinalFallback", type: "select", proxies: ["OtherAppsProxy", "DefaultProxy", "DIRECT"] });
 
   return groups;
 }
