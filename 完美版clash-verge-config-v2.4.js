@@ -55,7 +55,6 @@ function main(config, profileName) {
   config["unified-delay"] = true;
   config["tcp-concurrent"] = true;
   config["find-process-mode"] = "strict";
-  config["global-client-fingerprint"] = "chrome";
   config["keep-alive-interval"] = 30;
 
   config.profile = {
@@ -343,7 +342,7 @@ function buildRules() {
       var proc = edgeBrowser.processes[j];
       // Edge 国内网站直连
       rules.push("AND,((PROCESS-NAME," + proc + "),(GEOSITE,cn)),Direct");
-      rules.push("AND,((PROCESS-NAME," + proc + "),(GEOIP,CN)),Direct,no-resolve");
+      rules.push("AND,((PROCESS-NAME," + proc + "),(GEOIP,CN)),Direct");
       // Edge 国外网站走代理
       rules.push("AND,((PROCESS-NAME," + proc + "),(GEOSITE,geolocation-!cn)),EdgeProxy");
       // Edge 其他流量走代理
