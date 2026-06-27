@@ -4,6 +4,7 @@
 
 - `Android浏览器分流(完美版).yaml` - Android 浏览器分流配置
 - `Windows浏览器分流(完美版).yaml` - Windows 浏览器分流配置  
+- `完美版clash-verge-config-v2.10.js` - Clash Verge 多前置链式代理安全增强版配置生成器
 - `完美版clash-verge-config-v2.9.js` - Clash Verge 多前置链式代理安全增强版配置生成器
 - `完美版clash-verge-config-v2.8.js` - Clash Verge 链式代理安全增强版配置生成器
 - `完美版clash-verge-config-v2.7.js` - Clash Verge 链式代理安全增强版配置生成器
@@ -28,7 +29,7 @@
 
 ### Clash Verge 链式代理
 
-1. 使用 `完美版clash-verge-config-v2.9.js`
+1. 使用 `完美版clash-verge-config-v2.10.js`
 2. 在脚本顶部把 `SUB.Front` 填成购买的前置订阅链接
 3. 把 `SUB.Edge`、`SUB.Chrome`、`SUB.Firefox` 等填成自己的 VPS 落地订阅链接
 4. 保持 `ENABLE_CHAIN_PROXY = true`
@@ -45,17 +46,19 @@
 - `CHAIN_DISABLE_UDP = true`：当前置节点不支持 UDP 转发时，可禁用链式落地节点 UDP。
 - `FRONT_SELECTION_MODE = "fallback"`：默认稳定优先，`FrontProxy` 直接是 fallback 组；可改为 `"url-test"` 延迟优先、`"select"` 手动选择、`"load-balance"` 负载均衡。
 - `FRONT_NODE_FILTER = ""`：前置节点太多时，可填 `香港|台湾|日本|新加坡` 这类过滤表达式。
-- `FRONT_PROXY_GROUPS`：从同一个购买订阅里创建多个前置组，例如 `FrontProxyUS`、`FrontProxySG`、`FrontProxyJP`。
-- `FRONT_PROXY_BY_PROVIDER`：设置每个浏览器默认使用哪个前置组，并在 Clash Verge 界面里手动切换。例如 Edge 默认美国、Chrome 默认新加坡、Firefox 默认日本。
+- `FRONT_PROXY_GROUPS`：从同一个购买订阅里创建多个前置组，例如美国、新加坡、日本、香港、台湾、韩国、加拿大、英国、德国、法国、澳洲。
+- `FRONT_REGION_PRESETS`：常用前置地区顺序模板，例如 `us_first`、`asia_first`、`jp_first`、`eu_first`、`all_regions`。
+- `FRONT_PROXY_BY_PROVIDER`：设置每个浏览器默认使用哪个前置模板，并在 Clash Verge 界面里手动切换。
 - `CHAIN_PROXY_DNS_ENABLED = true`：可让链式代理使用独立的 `proxy-server-nameserver`，默认关闭以避免 DoH 递归/兼容问题。
 - `FRONT_PROXY_ALLOW_DIRECT_FALLBACK = true` 或 `EMERGENCY_DIRECT_TO_LANDING = true`：仅调试时使用；严格模式开启时脚本会拒绝这类配置。
 
 前置地区选择示例：
 
-- `EdgeFrontProxy` 默认使用 `FrontProxyUS`，也可手动切到 `FrontProxyJP`、`FrontProxySG` 或 `FrontProxy`。
-- `ChromeFrontProxy` 默认使用 `FrontProxySG`，也可手动切到美国或日本。
-- `FirefoxFrontProxy` 默认使用 `FrontProxyJP`，也可手动切到新加坡或美国。
-- 修改 `FRONT_PROXY_GROUPS` 的 `filter` 字段即可增加香港、台湾、欧洲等地区前置组。
+- `EdgeFrontProxy` 默认先走 `EdgeFrontAutoFallback`，自动按美国、加拿大、新加坡、日本、全部前置兜底；也可手动选具体地区。
+- `ChromeFrontProxy` 默认先走 `ChromeFrontAutoFallback`，自动按新加坡、日本、香港、台湾、美国、全部前置兜底。
+- `FirefoxFrontProxy` 默认先走 `FirefoxFrontAutoFallback`，自动按日本、新加坡、香港、美国、全部前置兜底。
+- 修改 `FRONT_PROXY_GROUPS` 的 `filter` 字段即可适配你购买订阅的实际节点命名。`filter`/`exclude` 都是正则，建议先单独导入 `SUB.Front` 看节点名，再调整关键词。
+- 前置地区只决定“本机如何连接到 VPS”；如果所有浏览器落地订阅都是同一台 VPS，目标网站看到的仍是同一个 VPS IP。
 
 验证方法：
 
