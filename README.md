@@ -4,17 +4,8 @@
 
 - `Android浏览器分流(完美版).yaml` - Android 浏览器分流配置
 - `Windows浏览器分流(完美版).yaml` - Windows 浏览器分流配置  
-- `完美版clash-verge-config-v2.13.js` - Clash Verge 分浏览器前置地区链式代理生产增强版配置生成器
-- `完美版clash-verge-config-v2.12.js` - Clash Verge 分浏览器前置地区链式代理生产增强版配置生成器
-- `完美版clash-verge-config-v2.11.js` - Clash Verge 分浏览器前置地区链式代理增强版配置生成器
-- `完美版clash-verge-config-v2.10.js` - Clash Verge 多前置链式代理安全增强版配置生成器
-- `完美版clash-verge-config-v2.9.js` - Clash Verge 多前置链式代理安全增强版配置生成器
-- `完美版clash-verge-config-v2.8.js` - Clash Verge 链式代理安全增强版配置生成器
-- `完美版clash-verge-config-v2.7.js` - Clash Verge 链式代理安全增强版配置生成器
-- `完美版clash-verge-config-v2.6.js` - Clash Verge 链式代理增强版配置生成器
-- `完美版clash-verge-config-v2.5.js` - Clash Verge 链式代理配置生成器
+- `完美版clash-verge-config-v2.13.js` - 当前推荐版，Clash Verge 分浏览器前置地区链式代理生产增强版配置生成器
 - `完美版clash-verge-config-v2.4.js` - Clash Verge 安全性能优化版配置生成器
-- `完美版clash-verge-config-v2.2.js` - Clash Verge 历史配置生成器
 
 ## 使用方法
 
