@@ -4,6 +4,7 @@
 
 - `Android浏览器分流(完美版).yaml` - Android 浏览器分流配置
 - `Windows浏览器分流(完美版).yaml` - Windows 浏览器分流配置  
+- `完美版clash-verge-config-v2.8.js` - Clash Verge 链式代理安全增强版配置生成器
 - `完美版clash-verge-config-v2.7.js` - Clash Verge 链式代理安全增强版配置生成器
 - `完美版clash-verge-config-v2.6.js` - Clash Verge 链式代理增强版配置生成器
 - `完美版clash-verge-config-v2.5.js` - Clash Verge 链式代理配置生成器
@@ -26,7 +27,7 @@
 
 ### Clash Verge 链式代理
 
-1. 使用 `完美版clash-verge-config-v2.7.js`
+1. 使用 `完美版clash-verge-config-v2.8.js`
 2. 在脚本顶部把 `SUB.Front` 填成购买的前置订阅链接
 3. 把 `SUB.Edge`、`SUB.Chrome`、`SUB.Firefox` 等填成自己的 VPS 落地订阅链接
 4. 保持 `ENABLE_CHAIN_PROXY = true`
@@ -38,9 +39,10 @@
 常用开关：
 
 - `STRICT_NO_DIRECT_FALLBACK = true`：默认开启，移除最终兜底里的 `DIRECT`，避免代理全挂时直连泄漏。
+- `ALLOW_DIRECT_RULES = false`：关闭 Edge 国内直连、其他应用国内直连和系统服务直连；如果要求任何网站都不能看到本机 IP，使用此项。
 - `LANDING_PROVIDER_EXCLUDE_TYPE = ""`：默认不过滤落地协议，AnyTLS 等协议不会被排除。
 - `CHAIN_DISABLE_UDP = true`：当前置节点不支持 UDP 转发时，可禁用链式落地节点 UDP。
-- `FRONT_SELECTION_MODE = "fallback"`：默认稳定优先，前置节点挂掉后自动切换；可改为 `"url-test"` 延迟优先。
+- `FRONT_SELECTION_MODE = "fallback"`：默认稳定优先，`FrontProxy` 直接是 fallback 组；可改为 `"url-test"` 延迟优先、`"select"` 手动选择、`"load-balance"` 负载均衡。
 - `FRONT_NODE_FILTER = ""`：前置节点太多时，可填 `香港|台湾|日本|新加坡` 这类过滤表达式。
 - `CHAIN_PROXY_DNS_ENABLED = true`：可让链式代理使用独立的 `proxy-server-nameserver`，默认关闭以避免 DoH 递归/兼容问题。
 - `FRONT_PROXY_ALLOW_DIRECT_FALLBACK = true` 或 `EMERGENCY_DIRECT_TO_LANDING = true`：仅调试时使用；严格模式开启时脚本会拒绝这类配置。
@@ -52,6 +54,7 @@
 - 断开或改坏前置节点后，落地节点应不可用，说明落地确实通过前置建连。
 - UDP 类落地协议（Hysteria2、TUIC、QUIC、WireGuard 等）需要前置节点支持 UDP 转发；不确定时优先用 TCP 类落地协议。
 - 落地节点 server 尽量使用 IP，减少本机解析落地节点域名带来的 DNS 暴露。
+- 前置节点健康检查会访问 `HEALTH_CHECK_URLS.front`，这不是用户真实业务流量；介意时可降低检查频率或换成自有轻量检测地址。
 
 ## 注意事项
 
