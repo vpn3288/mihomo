@@ -4,6 +4,7 @@
 
 - `Android浏览器分流(完美版).yaml` - Android 浏览器分流配置
 - `Windows浏览器分流(完美版).yaml` - Windows 浏览器分流配置  
+- `完美版clash-verge-config-v2.13.js` - Clash Verge 分浏览器前置地区链式代理生产增强版配置生成器
 - `完美版clash-verge-config-v2.12.js` - Clash Verge 分浏览器前置地区链式代理生产增强版配置生成器
 - `完美版clash-verge-config-v2.11.js` - Clash Verge 分浏览器前置地区链式代理增强版配置生成器
 - `完美版clash-verge-config-v2.10.js` - Clash Verge 多前置链式代理安全增强版配置生成器
@@ -31,7 +32,7 @@
 
 ### Clash Verge 链式代理
 
-1. 使用 `完美版clash-verge-config-v2.12.js`
+1. 使用 `完美版clash-verge-config-v2.13.js`
 2. 在脚本顶部把 `SUB.Front` 填成购买的前置订阅链接
 3. 把 `SUB.Edge`、`SUB.Chrome`、`SUB.Firefox` 等填成自己的 VPS 落地订阅链接
 4. 保持 `ENABLE_CHAIN_PROXY = true`
@@ -48,11 +49,12 @@
 - `CHAIN_DISABLE_UDP = true`：当前置节点不支持 UDP 转发时，可禁用链式落地节点 UDP。
 - `FRONT_SELECTION_MODE = "fallback"`：默认稳定优先，`FrontProxy` 直接是 fallback 组；可改为 `"url-test"` 延迟优先、`"select"` 手动选择、`"load-balance"` 负载均衡。
 - `FRONT_NODE_FILTER = ""`：前置节点太多时，可填 `香港|台湾|日本|新加坡` 这类过滤表达式。
-- `FRONT_NODE_EXCLUDE_FILTER`：默认只排除剩余流量、官网、到期等非节点条目；`中转/Relay` 不再默认排除，避免误删可用前置节点。
+- `FRONT_NODE_EXCLUDE_FILTER`：默认排除剩余流量、官网、到期、自动选择、负载均衡，以及容易造成地区误判的中转/专线/IPLC 标识；如果你的购买订阅把这些当作可用前置节点出售，可手动删掉对应关键词。
 - `FRONT_PROXY_GROUPS`：从同一个购买订阅里创建多个前置组，例如美国、新加坡、日本、香港、台湾、韩国、加拿大、英国、德国、法国、澳洲。
 - `FRONT_REGION_PRESETS`：常用前置地区顺序模板，例如 `us_first`、`asia_first`、`jp_first`、`eu_first`、`all_regions`。
 - `FRONT_PROXY_BY_PROVIDER`：设置每个浏览器的默认前置地区、手动可选地区和自动兜底顺序，并在 Clash Verge 界面里单独切换。
 - `HEALTH_CHECK_URLS.front = "https://cp.cloudflare.com/"`：前置节点默认用 Cloudflare 200 做健康检查，避免国内环境下 Google 204 探测全失败。
+- `HEALTH_CHECK_EXPECTED_STATUS`：如果更换健康检查 URL，要同步修改期望状态码；Cloudflare cp 是 200，Google generate_204 是 204。
 - `CHAIN_PROXY_DNS_ENABLED = true`：可让链式代理使用独立的 `proxy-server-nameserver`，默认关闭以避免 DoH 递归/兼容问题。
 - `FRONT_PROXY_ALLOW_DIRECT_FALLBACK = true` 或 `EMERGENCY_DIRECT_TO_LANDING = true`：仅调试时使用；严格模式开启时脚本会拒绝这类配置。
 
